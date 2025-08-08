@@ -39,20 +39,32 @@ All colors MUST be HSL.
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Brand & data tokens */
+    --brand-teal: 182 65% 45%;
+    --brand-emerald: 152 53% 41%;
+    --brand-gold: 43 95% 55%;
+    --warm-neutral: 32 12% 92%;
+
+    --value-low: var(--brand-teal);
+    --value-mid: var(--brand-emerald);
+    --value-high: var(--brand-gold);
+
+    --glow-blue: 190 100% 50%;
+    --glow-green: 152 100% 45%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(var(--brand-teal)), hsl(var(--brand-emerald)));
+    --gradient-gold: linear-gradient(135deg, hsl(var(--brand-gold)), hsl(var(--brand-emerald)));
+
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--brand-teal) / 0.35);
+    --shadow-glow: 0 0 40px hsl(var(--brand-emerald) / 0.4);
   }
 
   .dark {
@@ -83,6 +95,7 @@ All colors MUST be HSL.
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -91,6 +104,15 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Brand shifts for dark */
+    --brand-teal: 182 65% 55%;
+    --brand-emerald: 152 53% 50%;
+    --brand-gold: 43 95% 60%;
+    --warm-neutral: 220 10% 12%;
+
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--brand-emerald) / 0.35);
+    --shadow-glow: 0 0 40px hsl(var(--brand-teal) / 0.45);
   }
 }
 
@@ -102,4 +124,46 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer utilities {
+  /* Underline animation for links */
+  .story-link {
+    position: relative;
+    display: inline-block;
+  }
+  .story-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 2px;
+    background: hsl(var(--primary));
+    transform: scaleX(0);
+    transform-origin: bottom right;
+    transition: transform 300ms ease;
+  }
+  .story-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: bottom left;
+  }
+
+  /* Hover scale */
+  .hover-scale { transition: transform 200ms ease; }
+  .hover-scale:hover { transform: scale(1.05); }
+
+  /* Pulse utility */
+  .pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+
+  /* Neon glows for highlighted zones */
+  .neon-green-glow { box-shadow: 0 0 0 2px hsl(var(--glow-green) / 0.7), 0 0 24px hsl(var(--glow-green) / 0.5); }
+  .neon-blue-glow { box-shadow: 0 0 0 2px hsl(var(--glow-blue) / 0.7), 0 0 24px hsl(var(--glow-blue) / 0.5); }
+
+  /* Hover rise for cards/elements */
+  .hover-rise { transition: transform 200ms ease, box-shadow 200ms ease; }
+  .hover-rise:hover { transform: translateY(-2px); box-shadow: var(--shadow-elegant); }
+
+  /* Glass panel background */
+  .glass-panel { backdrop-filter: blur(10px); background: hsl(var(--background) / 0.7); border: 1px solid hsl(var(--border)); }
 }
