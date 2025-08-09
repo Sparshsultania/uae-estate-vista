@@ -32,6 +32,7 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
+  const selectedBuildingId = useRef<number | string | null>(null);
   const hoverRaf = useRef<number | null>(null);
 
   const propertiesFC = useMemo(() => toFeatureCollection(properties), []);
@@ -92,11 +93,14 @@ useEffect(() => {
             paint: {
               'fill-extrusion-color': [
                 'case',
+                ['boolean', ['feature-state', 'selected'], false], 'hsl(43,95%,55%)',
                 ['boolean', ['feature-state', 'hover'], false], 'hsl(182, 65%, 55%)',
                 'hsl(210, 10%, 80%)'
               ],
               'fill-extrusion-height': [
                 'case',
+                ['boolean', ['feature-state', 'selected'], false],
+                ['*', ['coalesce', ['get', 'height'], 20], 1.2],
                 ['boolean', ['feature-state', 'hover'], false],
                 ['*', ['coalesce', ['get', 'height'], 20], 1.08],
                 ['coalesce', ['get', 'height'], 20]
@@ -261,6 +265,24 @@ useEffect(() => {
             map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: hoveredBuildingId.current }, { hover: false });
           }
           hoveredBuildingId.current = null;
+          map!.getCanvas().style.cursor = '';
+        });
+
+        // Pointer cursor when entering buildings
+        map!.on('mouseenter', '3d-buildings', () => { map!.getCanvas().style.cursor = 'pointer'; });
+
+        // Click to select building (toggle selection)
+        map!.on('click', '3d-buildings', (e) => {
+          const f = e.features?.[0];
+          const id = (f?.id as number | string | undefined);
+          if (id == null) return;
+
+          if (selectedBuildingId.current !== null && selectedBuildingId.current !== id) {
+            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: selectedBuildingId.current }, { selected: false });
+          }
+          const isSame = selectedBuildingId.current === id;
+          selectedBuildingId.current = isSame ? null : id;
+          map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id }, { selected: !isSame });
         });
 
         map!.on('mouseenter', 'property-points', () => { map!.getCanvas().style.cursor = 'pointer'; });
