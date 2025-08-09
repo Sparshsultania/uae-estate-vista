@@ -52,6 +52,11 @@ const Index: React.FC = () => {
     }
   }, [isoPreset]);
   const [directionsEnabled, setDirectionsEnabled] = useState(false);
+  // Amenity search state
+  const [amenityCats, setAmenityCats] = useState<AmenityCategory[]>(ALL_AMENITY_CATEGORIES);
+  const [amenityRadius, setAmenityRadius] = useState<number>(1000);
+  const selectedCenter = selected?.coords as [number, number] | undefined;
+  const amenitiesSB = useSearchBoxAmenities({ token, center: selectedCenter ?? null, route: null, categories: amenityCats, radiusMeters: amenityRadius, limitPerCategory: 12 });
 
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
@@ -214,7 +219,27 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <RealEstateMap ref={mapRef} token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} onAreaChange={setSearchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} isochrone={{ enabled: isoEnabled, profile: isoProfile, minutes: isoMinutes }} directionsEnabled={directionsEnabled} />
+            <RealEstateMap
+              ref={mapRef}
+              token={token}
+              selected={selected}
+              onSelect={handleSelect}
+              showPriceHeat={showPriceHeat}
+              showYieldHeat={showYieldHeat}
+              searchArea={searchArea}
+              onAreaChange={setSearchArea}
+              mapStyle={mapStyle}
+              flyTo={flyTo || undefined}
+              isochrone={{ enabled: isoEnabled, profile: isoProfile, minutes: isoMinutes }}
+              directionsEnabled={directionsEnabled}
+              amenities={amenitiesSB.results}
+            />
+            <AmenityFilters
+              selected={amenityCats}
+              onChange={setAmenityCats}
+              radius={amenityRadius}
+              onRadius={setAmenityRadius}
+            />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
                 <Card className="p-4 glass-panel animate-enter">
@@ -236,7 +261,7 @@ const Index: React.FC = () => {
           </div>
         </article>
         <aside className="lg:col-span-4 xl:col-span-3">
-          <StatsPanel selected={selected} onRouteTo={handleRouteTo} />
+          <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
         </aside>
       </section>
 
