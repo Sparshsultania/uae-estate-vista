@@ -29,6 +29,7 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
+  const hoverRaf = useRef<number | null>(null);
 
   const propertiesFC = useMemo(() => toFeatureCollection(properties), []);
   const zonesFC = useMemo(() => buildZonesFeatureCollection(), []);
@@ -47,7 +48,7 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
       pitch: 55,
       bearing: -20,
       projection: 'globe',
-      antialias: true,
+      antialias: false,
     });
 
     mapRef.current = map;
@@ -110,15 +111,42 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
           ],
           'circle-color': [
             'step', ['get', 'pricePerSqft'],
-            'hsl(182,65%,45%)', // <= 1400 teal
-            1400, 'hsl(152,53%,41%)', // <= 2400 emerald
-            2400, 'hsl(43,95%,55%)' // > 2400 gold
+            'hsl(182,65%,45%)',
+            1400, 'hsl(152,53%,41%)',
+            2400, 'hsl(43,95%,55%)'
           ],
           'circle-stroke-width': 1.5,
           'circle-stroke-color': 'white',
           'circle-opacity': 0.9,
         }
       });
+
+      // Price labels (show at close zoom for clarity)
+      if (!map.getLayer('property-labels')) {
+        map.addLayer({
+          id: 'property-labels',
+          type: 'symbol',
+          source: 'properties',
+          minzoom: 14,
+          layout: {
+            'text-field': ['format', 'AED ', {}, ['get', 'pricePerSqft'], {}],
+            'text-size': [
+              'interpolate', ['linear'], ['zoom'],
+              14, 10,
+              18, 14
+            ],
+            'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+            'text-offset': [0, 1.2],
+            'text-anchor': 'top'
+          },
+          paint: {
+            'text-color': 'hsl(210, 10%, 20%)',
+            'text-halo-color': 'hsl(0, 0%, 100%)',
+            'text-halo-width': 1.2,
+            'text-halo-blur': 0.5
+          }
+        });
+      }
 
       // Heatmaps
       map.addLayer({
@@ -201,17 +229,21 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
 
       // Interactions
       map.on('mousemove', '3d-buildings', (e) => {
-        if (!e.features?.length) return;
-        const f = e.features[0];
-        const id = f.id as number | string | undefined;
-        if (id == null) return;
-        if (hoveredBuildingId.current !== null && hoveredBuildingId.current !== id) {
-          map.setFeatureState({ source: 'composite', sourceLayer: 'building', id: hoveredBuildingId.current }, { hover: false });
-        }
-        hoveredBuildingId.current = id;
-        map.setFeatureState({ source: 'composite', sourceLayer: 'building', id }, { hover: true });
+        if (hoverRaf.current) cancelAnimationFrame(hoverRaf.current);
+        hoverRaf.current = requestAnimationFrame(() => {
+          if (!e.features?.length) return;
+          const f = e.features[0];
+          const id = f.id as number | string | undefined;
+          if (id == null) return;
+          if (hoveredBuildingId.current !== null && hoveredBuildingId.current !== id) {
+            map.setFeatureState({ source: 'composite', sourceLayer: 'building', id: hoveredBuildingId.current }, { hover: false });
+          }
+          hoveredBuildingId.current = id;
+          map.setFeatureState({ source: 'composite', sourceLayer: 'building', id }, { hover: true });
+        });
       });
       map.on('mouseleave', '3d-buildings', () => {
+        if (hoverRaf.current) cancelAnimationFrame(hoverRaf.current);
         if (hoveredBuildingId.current !== null) {
           map.setFeatureState({ source: 'composite', sourceLayer: 'building', id: hoveredBuildingId.current }, { hover: false });
         }

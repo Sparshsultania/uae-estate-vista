@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import RealEstateMap from "@/components/map/RealEstateMap";
 import SearchBar from "@/components/controls/SearchBar";
+import IdentifierBar, { IdentifierPayload } from "@/components/controls/IdentifierBar";
 import StatsPanel from "@/components/panels/StatsPanel";
 import { properties, PropertyPoint } from "@/data/mockProperties";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Map, Sparkles, Settings2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 function circlePolygon(center: [number, number], radiusMeters: number, points = 64): GeoJSON.Feature<GeoJSON.Polygon> {
   const [lng, lat] = center;
@@ -32,10 +34,19 @@ const Index: React.FC = () => {
   const [token, setToken] = useState<string>(() => localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || "");
   const [showTokenPanel, setShowTokenPanel] = useState<boolean>(() => !localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
   const [dataSource, setDataSource] = useState<'all' | 'title-deed' | 'oqoo' | 'dewa'>('all');
+  const { toast } = useToast();
 
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
     setSearchArea(circlePolygon(p.coords, 1200));
+  };
+
+  const handleIdentifierSubmit = (payload: IdentifierPayload) => {
+    // For now, just acknowledge and prepare future matching to official datasets
+    toast({
+      title: 'Lookup submitted',
+      description: `${payload.type.toUpperCase()}: ${payload.value} — we will match this to your unit and fetch estimates.`,
+    });
   };
 
   const saveToken = () => {
@@ -92,6 +103,9 @@ const Index: React.FC = () => {
                 <option value="dewa">DEWA</option>
               </select>
             </div>
+          </div>
+          <div className="pt-2">
+            <IdentifierBar onSubmit={handleIdentifierSubmit} />
           </div>
         </div>
       </header>
