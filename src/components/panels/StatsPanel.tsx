@@ -5,10 +5,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import type { PropertyPoint } from "@/data/mockProperties";
 import { useAmenities, estimateDurationSec } from "@/hooks/useAmenities";
+import type { AmenityResult } from "@/hooks/useSearchBoxAmenities";
 
 type Props = {
   selected: PropertyPoint | null;
   onRouteTo?: (dest: [number, number], profile?: 'driving'|'walking'|'cycling') => void;
+  amenitiesOverride?: AmenityResult[];
+  amenitiesLoadingOverride?: boolean;
 };
 
 const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
@@ -31,11 +34,15 @@ const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
   );
 };
 
-const StatsPanel: React.FC<Props> = ({ selected, onRouteTo }) => {
+const StatsPanel: React.FC<Props> = ({ selected, onRouteTo, amenitiesOverride, amenitiesLoadingOverride }) => {
   const center = selected ? (selected.coords as [number, number]) : null;
-  const { data: amenities, loading: amenitiesLoading } = useAmenities(center);
+  const fallback = useAmenities(center);
+  const amenitiesLoading = amenitiesLoadingOverride ?? fallback.loading;
+  const amenitiesLegacy = fallback.data;
+  const amenitiesList: AmenityResult[] | null = amenitiesOverride ?? null;
   const fmtDist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m/1000).toFixed(2)} km`);
   const fmtMins = (sec: number) => `${Math.max(1, Math.round(sec/60))} min`;
+
   return (
     <div className="space-y-4">
       <Card className="hover-rise">
@@ -109,37 +116,90 @@ const StatsPanel: React.FC<Props> = ({ selected, onRouteTo }) => {
           ) : amenitiesLoading ? (
             <div className="text-sm text-muted-foreground">Loading amenities...</div>
           ) : (
-            <Tabs defaultValue="supermarket" className="w-full">
-              <TabsList className="grid grid-cols-3">
-                <TabsTrigger value="supermarket">Supermarkets</TabsTrigger>
-                <TabsTrigger value="school">Schools</TabsTrigger>
-                <TabsTrigger value="metro">Metro</TabsTrigger>
-              </TabsList>
-              {(["supermarket","school","metro"] as const).map((cat) => (
-                <TabsContent key={cat} value={cat} className="mt-3">
-                  {amenities[cat]?.length ? (
-                    <ul className="space-y-2">
-                      {amenities[cat].map((a) => (
-                        <li key={a.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
-                          <div>
-                            <div className="text-sm font-medium">{a.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {fmtDist(a.distanceMeters)} • {fmtMins(estimateDurationSec(a.distanceMeters, 'walking'))} walk • {fmtMins(estimateDurationSec(a.distanceMeters, 'driving'))} drive
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="secondary" onClick={() => onRouteTo?.(a.center, 'walking')}>Walk</Button>
-                            <Button size="sm" onClick={() => onRouteTo?.(a.center, 'driving')}>Drive</Button>
-                          </div>
-                        </li>
+            <>
+              {amenitiesList ? (
+                (() => {
+                  const label: Record<string, string> = {
+                    food_drink: 'Food & Cafes',
+                    groceries: 'Groceries',
+                    atm_bank: 'ATMs & Banks',
+                    pharmacy_hospital: 'Pharmacy & Hospital',
+                    school_university: 'Schools & Universities',
+                    gym_sports: 'Gyms & Sports',
+                    shopping_mall: 'Shopping Malls',
+                    public_transport: 'Public Transport',
+                  };
+                  const cats = Array.from(new Set(amenitiesList.map(a => a.category)));
+                  return (
+                    <Tabs defaultValue={cats[0] as string} className="w-full">
+                      <TabsList className="grid grid-cols-2 md:grid-cols-4">
+                        {cats.map((c) => (
+                          <TabsTrigger key={c} value={c as string}>{label[c as string] || c}</TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {cats.map((c) => (
+                        <TabsContent key={c} value={c as string} className="mt-3">
+                          {amenitiesList.filter(a => a.category === c).length ? (
+                            <ul className="space-y-2">
+                              {amenitiesList.filter(a => a.category === c).map((a) => (
+                                <li key={a.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
+                                  <div>
+                                    <div className="text-sm font-medium">{a.name}</div>
+                                    {typeof a.distanceMeters === 'number' && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {fmtDist(a.distanceMeters)} • {fmtMins(estimateDurationSec(a.distanceMeters, 'walking'))} walk • {fmtMins(estimateDurationSec(a.distanceMeters, 'driving'))} drive
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button size="sm" variant="secondary" onClick={() => onRouteTo?.(a.center, 'walking')}>Walk</Button>
+                                    <Button size="sm" onClick={() => onRouteTo?.(a.center, 'driving')}>Drive</Button>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">No results found nearby.</div>
+                          )}
+                        </TabsContent>
                       ))}
-                    </ul>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">No results found nearby.</div>
-                  )}
-                </TabsContent>
-              ))}
-            </Tabs>
+                    </Tabs>
+                  );
+                })()
+              ) : (
+                <Tabs defaultValue="supermarket" className="w-full">
+                  <TabsList className="grid grid-cols-3">
+                    <TabsTrigger value="supermarket">Supermarkets</TabsTrigger>
+                    <TabsTrigger value="school">Schools</TabsTrigger>
+                    <TabsTrigger value="metro">Metro</TabsTrigger>
+                  </TabsList>
+                  {(["supermarket","school","metro"] as const).map((cat) => (
+                    <TabsContent key={cat} value={cat} className="mt-3">
+                      {amenitiesLegacy[cat]?.length ? (
+                        <ul className="space-y-2">
+                          {amenitiesLegacy[cat].map((a) => (
+                            <li key={a.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
+                              <div>
+                                <div className="text-sm font-medium">{a.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {fmtDist(a.distanceMeters)} • {fmtMins(estimateDurationSec(a.distanceMeters, 'walking'))} walk • {fmtMins(estimateDurationSec(a.distanceMeters, 'driving'))} drive
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="secondary" onClick={() => onRouteTo?.(a.center, 'walking')}>Walk</Button>
+                                <Button size="sm" onClick={() => onRouteTo?.(a.center, 'driving')}>Drive</Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">No results found nearby.</div>
+                      )}
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

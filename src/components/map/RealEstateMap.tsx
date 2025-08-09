@@ -5,7 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import { properties, toFeatureCollection, zones as zoneList, PropertyPoint } from "@/data/mockProperties";
-
+import type { AmenityResult } from "@/hooks/useSearchBoxAmenities";
 export type IsochroneSettings = {
   enabled?: boolean;
   profile?: 'driving' | 'walking' | 'cycling';
