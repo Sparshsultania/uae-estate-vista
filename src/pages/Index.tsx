@@ -31,6 +31,7 @@ const Index: React.FC = () => {
   const [searchArea, setSearchArea] = useState<GeoJSON.Feature<GeoJSON.Polygon> | null>(null);
   const [token, setToken] = useState<string>(() => localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || "");
   const [showTokenPanel, setShowTokenPanel] = useState<boolean>(() => !localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
+  const [dataSource, setDataSource] = useState<'all' | 'title-deed' | 'oqoo' | 'dewa'>('all');
 
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
@@ -69,14 +70,27 @@ const Index: React.FC = () => {
           <div className="md:hidden">
             <SearchBar items={properties} onSelect={handleSelect} />
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <Switch id="toggle-price" checked={showPriceHeat} onCheckedChange={setShowPriceHeat} />
-              <label htmlFor="toggle-price" className="text-sm">Price / sq. ft. heatmap</label>
+              <label htmlFor="toggle-price" className="text-sm">Price heatmap</label>
             </div>
             <div className="flex items-center gap-2">
               <Switch id="toggle-yield" checked={showYieldHeat} onCheckedChange={setShowYieldHeat} />
-              <label htmlFor="toggle-yield" className="text-sm">Rental yield heatmap</label>
+              <label htmlFor="toggle-yield" className="text-sm">Yield heatmap</label>
+            </div>
+            <div className="flex items-center gap-2 ml-4">
+              <label className="text-sm font-medium">Data Source:</label>
+              <select 
+                value={dataSource} 
+                onChange={(e) => setDataSource(e.target.value as any)}
+                className="px-3 py-1 text-sm border rounded-md bg-background"
+              >
+                <option value="all">All Sources</option>
+                <option value="title-deed">Title Deed</option>
+                <option value="oqoo">OQOO</option>
+                <option value="dewa">DEWA</option>
+              </select>
             </div>
           </div>
         </div>

@@ -234,10 +234,23 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
           const name = feat.properties?.name as string;
           const price = feat.properties?.pricePerSqft as number;
           const yieldPct = feat.properties?.rentYield as number;
-          new mapboxgl.Popup({ closeButton: false })
-            .setLngLat(coords)
-            .setHTML(`<div style="font-weight:600">${name}</div><div>Price/sqft: AED ${price}</div><div>Yield: ${yieldPct}%</div>`)
-            .addTo(map);
+        // Enhanced quick popup
+        new mapboxgl.Popup({ 
+          closeButton: false, 
+          className: 'quick-popup',
+          offset: 25 
+        })
+          .setLngLat(coords)
+          .setHTML(`
+            <div class="p-2 text-sm space-y-1">
+              <div class="font-semibold text-primary">${name}</div>
+              <div class="text-xs text-muted-foreground flex justify-between">
+                <span>AED ${price}/sqft</span>
+                <span class="text-emerald-600">${yieldPct}% yield</span>
+              </div>
+            </div>
+          `)
+          .addTo(map);
         }
       });
 
@@ -283,12 +296,60 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
     }
   }, [searchArea]);
 
-  // Fly to selected
+  // Fly to selected property with enhanced 3D view
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
-    if (selected) {
-      map.easeTo({ center: selected.coords, zoom: 14, duration: 1200 });
+    if (!selected) return;
+    
+    // Close any existing popups
+    const popups = document.getElementsByClassName('mapboxgl-popup');
+    for (let i = 0; i < popups.length; i++) {
+      popups[i].remove();
     }
+    
+    map.flyTo({
+      center: selected.coords,
+      zoom: 18,
+      pitch: 60,
+      bearing: 45,
+      duration: 2500,
+      essential: true
+    });
+    
+    // Enhanced popup after zoom
+    setTimeout(() => {
+      const popup = new mapboxgl.Popup({ 
+        closeButton: true,
+        className: 'custom-popup',
+        maxWidth: '300px'
+      })
+        .setLngLat(selected.coords)
+        .setHTML(`
+          <div class="p-4 space-y-3">
+            <div class="font-bold text-lg text-primary">${selected.name}</div>
+            <div class="text-sm text-muted-foreground">${selected.community}</div>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div class="font-medium">Value</div>
+                <div class="text-primary">AED ${selected.estimatedValueAED.toLocaleString()}</div>
+              </div>
+              <div>
+                <div class="font-medium">Per Sq.Ft</div>
+                <div>AED ${selected.pricePerSqft}</div>
+              </div>
+              <div>
+                <div class="font-medium">Yield</div>
+                <div class="text-emerald-600">${selected.rentYield}%</div>
+              </div>
+              <div>
+                <div class="font-medium">Score</div>
+                <div class="text-amber-600">${selected.investmentScore}/100</div>
+              </div>
+            </div>
+          </div>
+        `)
+        .addTo(map);
+    }, 1500);
   }, [selected]);
 
   const hasToken = !!(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
