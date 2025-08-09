@@ -221,7 +221,7 @@ const Index: React.FC = () => {
               onCalculate={(vals) => {
                 toast({
                   title: 'Calculating…',
-                  description: `${vals.beds} bed • ${vals.size || '—'} ${vals.sizeUnit} • ${vals.unitNumber !== 'Select...' ? vals.unitNumber : 'Unit'} in ${vals.building || 'selected area'}`,
+                  description: `${vals.beds || 'Bedrooms'} • ${vals.size || '—'} ${vals.sizeUnit} • ${vals.unitNumber?.trim() ? vals.unitNumber : 'Unit'} in ${vals.building || 'selected area'}`,
                 });
               }}
             />

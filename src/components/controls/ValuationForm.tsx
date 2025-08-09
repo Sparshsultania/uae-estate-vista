@@ -12,7 +12,7 @@ import {
 export type ValuationFormValues = {
   building: string;
   unitNumber: string;
-  beds: string;
+  beds?: string;
   size: string;
   sizeUnit: 'sqft' | 'sqm';
 };
@@ -23,15 +23,11 @@ type Props = {
   onCalculate?: (values: ValuationFormValues) => void;
 };
 
-const unitOptions = [
-  'Select...',
-  'G-01', 'G-02', '101', '102', '103', '201', '202', '203', '301', '302', '401', '402', '501', '502', '601', '602', '701', '702', '801', '802',
-];
 
 const ValuationForm: React.FC<Props> = ({ token, onPlaceSelect, onCalculate }) => {
   const [building, setBuilding] = React.useState("");
-  const [unitNumber, setUnitNumber] = React.useState<string>(unitOptions[0]);
-  const [beds, setBeds] = React.useState<string>("2");
+  const [unitNumber, setUnitNumber] = React.useState<string>("");
+  const [beds, setBeds] = React.useState<string | undefined>(undefined);
   const [size, setSize] = React.useState<string>("");
   const [sizeUnit, setSizeUnit] = React.useState<'sqft' | 'sqm'>("sqft");
 
@@ -75,22 +71,18 @@ const ValuationForm: React.FC<Props> = ({ token, onPlaceSelect, onCalculate }) =
         </div>
         {/* Unit/Villa Number */}
         <div className="md:col-span-3">
-          <Select value={unitNumber} onValueChange={setUnitNumber}>
-            <SelectTrigger aria-label="Unit or Villa Number">
-              <SelectValue placeholder="Unit/Villa Number" />
-            </SelectTrigger>
-            <SelectContent>
-              {unitOptions.map((u) => (
-                <SelectItem key={u} value={u}>{u}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            value={unitNumber}
+            onChange={(e) => setUnitNumber(e.target.value)}
+            placeholder="Unit/Villa Number"
+            aria-label="Unit or Villa Number"
+          />
         </div>
         {/* Beds */}
         <div className="md:col-span-2">
           <Select value={beds} onValueChange={setBeds}>
             <SelectTrigger aria-label="Bedrooms">
-              <SelectValue placeholder="Beds" />
+              <SelectValue placeholder="Bedrooms" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="studio">Studio</SelectItem>
