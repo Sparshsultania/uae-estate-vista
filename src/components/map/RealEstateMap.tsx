@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+// @ts-ignore - draw plugin types not included
+import MapboxDraw from "mapbox-gl-draw";
+import "mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { properties, toFeatureCollection, zones as zoneList, PropertyPoint } from "@/data/mockProperties";
 
 export type RealEstateMapProps = {
@@ -28,12 +31,13 @@ function buildZonesFeatureCollection() {
   } satisfies GeoJSON.FeatureCollection<GeoJSON.Polygon>;
 }
 
-const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, mapStyle, flyTo }) => {
+const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo }) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
-  const selectedBuildingId = useRef<number | string | null>(null);
+  const selectedBuildingIds = useRef<Set<number | string>>(new Set());
   const hoverRaf = useRef<number | null>(null);
+  const drawRef = useRef<any | null>(null);
 
   const propertiesFC = useMemo(() => toFeatureCollection(properties), []);
   const zonesFC = useMemo(() => buildZonesFeatureCollection(), []);
@@ -69,6 +73,29 @@ useEffect(() => {
       map.touchZoomRotate.enable();
       map.keyboard.enable();
       map.boxZoom.enable();
+
+      // Draw control for search-by-shape
+      const draw = new (MapboxDraw as any)({ displayControlsDefault: false, controls: { polygon: true, trash: true } });
+      map.addControl(draw, 'top-left');
+      drawRef.current = draw;
+
+      map.on('draw.create', (e: any) => {
+        try {
+          const feat = e.features?.[0];
+          if (!feat) return;
+          if (feat.geometry.type === 'Polygon') {
+            onAreaChange?.(feat as GeoJSON.Feature<GeoJSON.Polygon>);
+          }
+        } catch (err) { console.error('draw.create error', err); }
+      });
+      map.on('draw.update', (e: any) => {
+        try {
+          const feat = e.features?.[0];
+          if (!feat) return;
+          if (feat.geometry.type === 'Polygon') onAreaChange?.(feat as GeoJSON.Feature<GeoJSON.Polygon>);
+        } catch (err) { console.error('draw.update error', err); }
+      });
+      map.on('draw.delete', () => { onAreaChange?.(null as any); });
 
       map.on('style.load', () => {
         // Atmosphere
@@ -271,18 +298,26 @@ useEffect(() => {
         // Pointer cursor when entering buildings
         map!.on('mouseenter', '3d-buildings', () => { map!.getCanvas().style.cursor = 'pointer'; });
 
-        // Click to select building (toggle selection)
+        // Click to select building (multi-part selection within a radius)
         map!.on('click', '3d-buildings', (e) => {
-          const f = e.features?.[0];
-          const id = (f?.id as number | string | undefined);
-          if (id == null) return;
+          const pad = 35; // pixels around click
+          const bbox: [[number, number], [number, number]] = [
+            [e.point.x - pad, e.point.y - pad],
+            [e.point.x + pad, e.point.y + pad],
+          ];
+          const feats = map!.queryRenderedFeatures(bbox, { layers: ['3d-buildings'] });
+          // Clear previous selection
+          selectedBuildingIds.current.forEach((pid) => {
+            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: pid }, { selected: false });
+          });
+          selectedBuildingIds.current.clear();
 
-          if (selectedBuildingId.current !== null && selectedBuildingId.current !== id) {
-            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: selectedBuildingId.current }, { selected: false });
-          }
-          const isSame = selectedBuildingId.current === id;
-          selectedBuildingId.current = isSame ? null : id;
-          map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id }, { selected: !isSame });
+          feats.forEach((ff) => {
+            const fid = ff.id as number | string | undefined;
+            if (fid == null) return;
+            selectedBuildingIds.current.add(fid);
+            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
+          });
         });
 
         map!.on('mouseenter', 'property-points', () => { map!.getCanvas().style.cursor = 'pointer'; });

@@ -145,7 +145,7 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <RealEstateMap token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} />
+            <RealEstateMap token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} onAreaChange={setSearchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
                 <Card className="p-4 glass-panel animate-enter">
