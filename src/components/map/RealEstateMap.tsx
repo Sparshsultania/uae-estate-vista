@@ -26,7 +26,7 @@ export type RealEstateMapProps = {
   directionsEnabled?: boolean;
 };
 
-const UAE_CENTER: [number, number] = [54.5, 24.2];
+const UAE_CENTER: [number, number] = [55.2744, 25.1972];
 
 function buildZonesFeatureCollection() {
   return {
@@ -120,7 +120,7 @@ useEffect(() => {
         container: container.current,
         style: mapStyle || "mapbox://styles/mapbox/streets-v12",
         center: UAE_CENTER,
-        zoom: 6,
+        zoom: 13,
         pitch: 55,
         bearing: -20,
         projection: 'globe',

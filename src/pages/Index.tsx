@@ -34,7 +34,7 @@ const Index: React.FC = () => {
   const [token, setToken] = useState<string>(() => localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || "");
   const [showTokenPanel, setShowTokenPanel] = useState<boolean>(() => !localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
   const [dataSource, setDataSource] = useState<'all' | 'title-deed' | 'oqoo' | 'dewa'>('all');
-  const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/outdoors-v12');
+  const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/streets-v12');
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom?: number } | null>(null);
   const { toast } = useToast();
 
