@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-// @ts-ignore - draw plugin types not included
-import MapboxDraw from "mapbox-gl-draw";
+// Keep CSS only; Draw JS will be loaded dynamically to avoid global polyfill issues
 import "mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { properties, toFeatureCollection, zones as zoneList, PropertyPoint } from "@/data/mockProperties";
 
@@ -74,28 +73,37 @@ useEffect(() => {
       map.keyboard.enable();
       map.boxZoom.enable();
 
-      // Draw control for search-by-shape
-      const draw = new (MapboxDraw as any)({ displayControlsDefault: false, controls: { polygon: true, trash: true } });
-      map.addControl(draw, 'top-left');
-      drawRef.current = draw;
-
-      map.on('draw.create', (e: any) => {
+      // Draw control for search-by-shape (dynamic import to avoid global issues)
+      (async () => {
         try {
-          const feat = e.features?.[0];
-          if (!feat) return;
-          if (feat.geometry.type === 'Polygon') {
-            onAreaChange?.(feat as GeoJSON.Feature<GeoJSON.Polygon>);
+          if (typeof (globalThis as any).global === 'undefined') {
+            (globalThis as any).global = globalThis;
           }
-        } catch (err) { console.error('draw.create error', err); }
-      });
-      map.on('draw.update', (e: any) => {
-        try {
-          const feat = e.features?.[0];
-          if (!feat) return;
-          if (feat.geometry.type === 'Polygon') onAreaChange?.(feat as GeoJSON.Feature<GeoJSON.Polygon>);
-        } catch (err) { console.error('draw.update error', err); }
-      });
-      map.on('draw.delete', () => { onAreaChange?.(null as any); });
+          const DrawMod: any = await import('mapbox-gl-draw');
+          const DrawCtor = DrawMod?.default ?? DrawMod;
+          const draw = new DrawCtor({ displayControlsDefault: false, controls: { polygon: true, trash: true } });
+          map.addControl(draw, 'top-left');
+          drawRef.current = draw;
+
+          map.on('draw.create', (e: any) => {
+            try {
+              const feat = e.features?.[0];
+              if (!feat) return;
+              if (feat.geometry.type === 'Polygon') {
+                onAreaChange?.(feat as GeoJSON.Feature<GeoJSON.Polygon>);
+              }
+            } catch (err) { console.error('draw.create error', err); }
+          });
+          map.on('draw.update', (e: any) => {
+            try {
+              const feat = e.features?.[0];
+              if (!feat) return;
+              if (feat.geometry.type === 'Polygon') onAreaChange?.(feat as GeoJSON.Feature<GeoJSON.Polygon>);
+            } catch (err) { console.error('draw.update error', err); }
+          });
+          map.on('draw.delete', () => { onAreaChange?.(null as any); });
+        } catch (e) { console.error('Failed to init MapboxDraw', e); }
+      })();
 
       map.on('style.load', () => {
         // Atmosphere
