@@ -15,6 +15,12 @@ export type RealEstateMapProps = {
   onAreaChange?: (area: GeoJSON.Feature<GeoJSON.Polygon> | null) => void;
   mapStyle?: string; // e.g. mapbox://styles/mapbox/streets-v12
   flyTo?: { center: [number, number]; zoom?: number };
+  // Neighborhood picker (Mapbox Boundaries)
+  enableNeighborhoodPicker?: boolean;
+  selectedNeighborhoods?: { id: string; name?: string }[];
+  onNeighborhoodsChange?: (items: { id: string; name?: string }[]) => void;
+  boundariesTileset?: string; // e.g. mapbox.boundaries-neighborhoods-v1
+  boundariesSourceLayer?: string; // e.g. boundaries_neighborhoods
 };
 
 const UAE_CENTER: [number, number] = [54.5, 24.2];
@@ -32,13 +38,14 @@ function buildZonesFeatureCollection() {
 
 export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; };
 
-const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo }, ref) => {
+const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, enableNeighborhoodPicker, selectedNeighborhoods, onNeighborhoodsChange, boundariesTileset, boundariesSourceLayer }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
   const selectedBuildingIds = useRef<Set<number | string>>(new Set());
   const hoverRaf = useRef<number | null>(null);
   const drawRef = useRef<any | null>(null);
+  const nbhdSelectedIdsRef = useRef<Set<string>>(new Set());
 
   useImperativeHandle(ref, () => ({
     startDrawPolygon: () => {
@@ -298,6 +305,62 @@ useEffect(() => {
           }
         });
 
+        // Neighborhoods (Mapbox Boundaries) — requires Boundaries entitlement on your Mapbox token
+        try {
+          const tileset = boundariesTileset || 'mapbox.boundaries-neighborhoods-v1';
+          const srcLayer = boundariesSourceLayer || 'boundaries_neighborhoods';
+          if (!map!.getSource('mb-neighborhoods')) {
+            map!.addSource('mb-neighborhoods', { type: 'vector', url: `mapbox://${tileset}` });
+          }
+          if (!map!.getLayer('nbhd-fill')) {
+            map!.addLayer({
+              id: 'nbhd-fill',
+              type: 'fill',
+              source: 'mb-neighborhoods',
+              'source-layer': srcLayer,
+              paint: { 'fill-color': 'hsl(210,30%,60%)', 'fill-opacity': 0.06 }
+            });
+          }
+          if (!map!.getLayer('nbhd-outline')) {
+            map!.addLayer({
+              id: 'nbhd-outline',
+              type: 'line',
+              source: 'mb-neighborhoods',
+              'source-layer': srcLayer,
+              paint: { 'line-color': 'hsl(210,30%,50%)', 'line-width': 1, 'line-opacity': 0.5 }
+            });
+          }
+          if (!map!.getLayer('nbhd-selected')) {
+            map!.addLayer({
+              id: 'nbhd-selected',
+              type: 'line',
+              source: 'mb-neighborhoods',
+              'source-layer': srcLayer,
+              paint: { 'line-color': 'hsl(152,53%,41%)', 'line-width': 3, 'line-opacity': 0.9 },
+              filter: ['in', ['get', 'mapbox_id'], ['literal', []]]
+            });
+          }
+          // pointer cursor and click toggle
+          map!.on('mouseenter', 'nbhd-fill', () => { map!.getCanvas().style.cursor = 'pointer'; });
+          map!.on('mouseleave', 'nbhd-fill', () => { map!.getCanvas().style.cursor = ''; });
+          map!.on('click', 'nbhd-fill', (e) => {
+            const f = e.features?.[0] as mapboxgl.MapboxGeoJSONFeature | undefined;
+            if (!f) return;
+            const pid = (f.properties?.mapbox_id ?? f.properties?.id ?? f.id)?.toString();
+            if (!pid) return;
+            const name = (f.properties?.name_en ?? f.properties?.name ?? f.properties?.NAME ?? '').toString();
+            const set = nbhdSelectedIdsRef.current;
+            if (set.has(pid)) set.delete(pid); else set.add(pid);
+            const list = Array.from(set);
+            if (map!.getLayer('nbhd-selected')) {
+              map!.setFilter('nbhd-selected', ['in', ['get', 'mapbox_id'], ['literal', list]]);
+            }
+            onNeighborhoodsChange?.(list.map((id) => ({ id, name: id === pid ? name : undefined })));
+          });
+        } catch (err) {
+          console.warn('Mapbox Boundaries neighborhoods not available. Check your tileset or token entitlements.', err);
+        }
+
         // Interactions
         map!.on('mousemove', '3d-buildings', (e) => {
           if (hoverRaf.current) cancelAnimationFrame(hoverRaf.current);
@@ -402,6 +465,25 @@ useEffect(() => {
     if (map.getLayer('heatmap-price')) map.setLayoutProperty('heatmap-price', 'visibility', showPriceHeat ? 'visible' : 'none');
     if (map.getLayer('heatmap-yield')) map.setLayoutProperty('heatmap-yield', 'visibility', showYieldHeat ? 'visible' : 'none');
   }, [showPriceHeat, showYieldHeat]);
+
+  // Neighborhood picker visibility toggle
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    const vis = enableNeighborhoodPicker ? 'visible' : 'none';
+    ['nbhd-fill','nbhd-outline','nbhd-selected'].forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
+    });
+  }, [enableNeighborhoodPicker]);
+
+  // Sync selected neighborhoods from parent
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    const ids = (selectedNeighborhoods || []).map((i) => i.id);
+    nbhdSelectedIdsRef.current = new Set(ids);
+    if (map.getLayer('nbhd-selected')) {
+      map.setFilter('nbhd-selected', ['in', ['get', 'mapbox_id'], ['literal', ids]]);
+    }
+  }, [selectedNeighborhoods]);
 
   // Update base style when mapStyle changes
   useEffect(() => {
