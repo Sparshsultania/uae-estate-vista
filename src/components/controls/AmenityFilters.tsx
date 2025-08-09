@@ -33,9 +33,10 @@ type Props = {
   onRadius: (r: number) => void;
   alongRoute?: boolean; // optional; when undefined, hide control
   onAlongRoute?: (v: boolean) => void;
+  inline?: boolean; // when true, render as panel (not absolute overlay)
 };
 
-const AmenityFilters: React.FC<Props> = ({ selected, onChange, radius, onRadius, alongRoute, onAlongRoute }) => {
+const AmenityFilters: React.FC<Props> = ({ selected, onChange, radius, onRadius, alongRoute, onAlongRoute, inline }) => {
   const toggle = (c: AmenityCategory) => {
     const set = new Set(selected);
     if (set.has(c)) set.delete(c); else set.add(c);
@@ -44,8 +45,12 @@ const AmenityFilters: React.FC<Props> = ({ selected, onChange, radius, onRadius,
   const selectAll = () => onChange(ALL_AMENITY_CATEGORIES);
   const clearAll = () => onChange([]);
 
+  const containerClass = inline
+    ? "rounded-lg border p-3 mb-4 animate-enter"
+    : "absolute left-4 top-4 z-30 w-[320px] max-w-[92vw] glass-panel rounded-lg p-3 animate-enter";
+
   return (
-    <div className="absolute left-4 top-4 z-30 w-[320px] max-w-[92vw] glass-panel rounded-lg p-3 animate-enter">
+    <div className={containerClass}>
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-medium">Amenities</div>
         <div className="flex gap-1">

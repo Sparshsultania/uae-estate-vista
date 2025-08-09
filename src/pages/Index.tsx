@@ -234,12 +234,6 @@ const Index: React.FC = () => {
               directionsEnabled={directionsEnabled}
               amenities={amenitiesSB.results}
             />
-            <AmenityFilters
-              selected={amenityCats}
-              onChange={setAmenityCats}
-              radius={amenityRadius}
-              onRadius={setAmenityRadius}
-            />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
                 <Card className="p-4 glass-panel animate-enter">
@@ -260,7 +254,13 @@ const Index: React.FC = () => {
             )}
           </div>
         </article>
-        <aside className="lg:col-span-4 xl:col-span-3">
+        <aside className="lg:col-span-4 xl:col-span-3 space-y-3">
+          <AmenityFilters inline selected={amenityCats} onChange={setAmenityCats} radius={amenityRadius} onRadius={setAmenityRadius} />
+          {amenitiesSB.searchBoxSupported === false && (
+            <div className="rounded-md border p-3 text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+              Live amenities are using a fallback (Geocoding API). For richer, faster results, enable “Search Box API” scope on your Mapbox public token and add your site origin in the Mapbox dashboard.
+            </div>
+          )}
           <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
         </aside>
       </section>
