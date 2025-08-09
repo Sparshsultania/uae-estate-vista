@@ -49,6 +49,9 @@ const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(
   const hoverRaf = useRef<number | null>(null);
   const drawRef = useRef<any | null>(null);
   const directionsCtlRef = useRef<any | null>(null);
+  // Fallback routing refs
+  const routeClickHandlerRef = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null);
+  const routeActiveRef = useRef<boolean>(false);
 
   useImperativeHandle(ref, () => ({
     startDrawPolygon: () => {
@@ -151,8 +154,8 @@ useEffect(() => {
             id: '3d-buildings',
             source: 'composite',
             'source-layer': 'building',
-            // Include buildings that either explicitly request extrusion or have a height
-            filter: ['any', ['==', ['get', 'extrude'], 'true'], ['has', 'height']],
+            // Render polygons as 3D extrusions; fallback height if missing
+            filter: ['==', ['geometry-type'], 'Polygon'],
             type: 'fill-extrusion',
             minzoom: 13,
             paint: {
@@ -500,31 +503,7 @@ useEffect(() => {
       .catch((e) => console.warn('Isochrone fetch failed', e));
   }, [isochrone?.enabled, isochrone?.profile, JSON.stringify(isochrone?.minutes), selected, token]);
 
-  // Directions control toggle
-  useEffect(() => {
-    const map = mapRef.current; if (!map) return;
-    (async () => {
-      if (directionsEnabled) {
-        try {
-          const mod: any = await import('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions');
-          const Directions = mod.default || mod;
-          const ctl = new Directions({
-            accessToken: mapboxgl.accessToken,
-            unit: 'metric',
-            profile: 'mapbox/driving'
-          });
-          map.addControl(ctl, 'top-left');
-          directionsCtlRef.current = ctl;
-          if (selected?.coords) ctl.setOrigin(selected.coords);
-        } catch (e) { console.error('Failed to init Directions', e); }
-      } else {
-        if (directionsCtlRef.current) {
-          try { map.removeControl(directionsCtlRef.current); } catch {}
-          directionsCtlRef.current = null;
-        }
-      }
-    })();
-  }, [directionsEnabled]);
+  // (removed legacy directions effect - now handled above with fallback)
 
   // Keep directions origin in sync with selected property
   useEffect(() => {
