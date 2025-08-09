@@ -71,6 +71,15 @@ const Index: React.FC = () => {
     setFlyTo({ center: pl.center, zoom: 13 });
   };
 
+  const handleRouteTo = (dest: [number, number], profile: 'driving'|'walking'|'cycling' = 'driving') => {
+    if (!directionsEnabled) {
+      setDirectionsEnabled(true);
+      setTimeout(() => mapRef.current?.routeTo(dest, profile), 600);
+    } else {
+      mapRef.current?.routeTo(dest, profile);
+    }
+  };
+
   const saveToken = () => {
     const t = token.trim();
     if (!t || (!t.startsWith('pk.') && !t.startsWith('pk_'))) {
@@ -225,7 +234,7 @@ const Index: React.FC = () => {
           </div>
         </article>
         <aside className="lg:col-span-4 xl:col-span-3">
-          <StatsPanel selected={selected} />
+          <StatsPanel selected={selected} onRouteTo={handleRouteTo} />
         </aside>
       </section>
 

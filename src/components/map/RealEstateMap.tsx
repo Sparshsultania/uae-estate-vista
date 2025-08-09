@@ -39,7 +39,7 @@ function buildZonesFeatureCollection() {
   } satisfies GeoJSON.FeatureCollection<GeoJSON.Polygon>;
 }
 
-export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; };
+export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; routeTo: (dest: [number, number], profile?: 'driving'|'walking'|'cycling') => void; };
 
 const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
@@ -63,7 +63,47 @@ const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(
       try { drawRef.current?.deleteAll?.(); } catch (e) { console.error('clearDraw failed', e); }
       onAreaChange?.(null);
     },
-  }), [onAreaChange]);
+    routeTo: (dest: [number, number], profile: 'driving'|'walking'|'cycling' = 'driving') => {
+      const map = mapRef.current; if (!map) return;
+      try {
+        // Try built-in directions control first
+        const ctl: any = directionsCtlRef.current;
+        if (ctl && typeof ctl.setDestination === 'function') {
+          try { if (selected?.coords) ctl.setOrigin(selected.coords); } catch {}
+          try { if (typeof ctl.setProfile === 'function') ctl.setProfile(`mapbox/${profile}`); } catch {}
+          ctl.setDestination(dest);
+          map.flyTo({ center: dest, zoom: Math.max(map.getZoom(), 14), speed: 1.1, curve: 1.2 });
+          if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'none');
+          return;
+        }
+        // Fallback: draw a route line using Directions API
+        if (!map.isStyleLoaded()) { map.once('style.load', () => { (ref as any)?.current?.routeTo?.(dest, profile); }); return; }
+        const accessToken = (token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '') as string;
+        const ensureSource = () => {
+          if (!map.getSource('route')) {
+            map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } as any });
+            map.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': 'hsl(182,65%,45%)', 'line-width': 4, 'line-opacity': 0.85 } });
+          }
+        };
+        const origin: [number,number] = selected?.coords ?? (map.getCenter().toArray() as [number,number]);
+        const prof = profile || 'driving';
+        const url = `https://api.mapbox.com/directions/v5/mapbox/${prof}/${origin[0]},${origin[1]};${dest[0]},${dest[1]}?geometries=geojson&overview=full&access_token=${accessToken}`;
+        fetch(url)
+          .then((r) => r.json())
+          .then((json) => {
+            const geom = json?.routes?.[0]?.geometry;
+            if (!geom) return;
+            ensureSource();
+            (map.getSource('route') as mapboxgl.GeoJSONSource).setData({ type: 'Feature', geometry: geom, properties: {} } as any);
+            map.flyTo({ center: dest, zoom: Math.max(map.getZoom(), 14), speed: 1.1, curve: 1.2 });
+            if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'none');
+          })
+          .catch((e) => console.warn('routeTo fetch failed', e));
+      } catch (e) {
+        console.error('routeTo failed', e);
+      }
+    },
+  }), [onAreaChange, selected, token]);
 
   const propertiesFC = useMemo(() => toFeatureCollection(properties), []);
   const zonesFC = useMemo(() => buildZonesFeatureCollection(), []);
@@ -673,7 +713,7 @@ useEffect(() => {
         .setLngLat(selected.coords)
         .setHTML(`
           <div class="rounded-md overflow-hidden">
-            <img src="/placeholder.svg" alt="${selected.name} photo" class="w-full h-32 object-cover" loading="lazy" />
+            <img src="${selected.imageUrl || '/images/buildings/downtown.jpg'}" alt="${selected.name} photo" class="w-full h-32 object-cover" loading="lazy" />
             <div class="p-4 space-y-3">
               <div class="font-bold text-lg text-primary">${selected.name}</div>
               <div class="text-sm text-muted-foreground">${selected.community}</div>

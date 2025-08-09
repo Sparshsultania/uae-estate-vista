@@ -5,6 +5,7 @@ import type { PropertyPoint } from "@/data/mockProperties";
 
 type Props = {
   selected: PropertyPoint | null;
+  onRouteTo?: (dest: [number, number], profile?: 'driving'|'walking'|'cycling') => void;
 };
 
 const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
@@ -27,7 +28,11 @@ const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
   );
 };
 
-const StatsPanel: React.FC<Props> = ({ selected }) => {
+const StatsPanel: React.FC<Props> = ({ selected, onRouteTo }) => {
+  const center = selected ? (selected.coords as [number, number]) : null;
+  const { data: amenities, loading: amenitiesLoading } = useAmenities(center);
+  const fmtDist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m/1000).toFixed(2)} km`);
+  const fmtMins = (sec: number) => `${Math.max(1, Math.round(sec/60))} min`;
   return (
     <div className="space-y-4">
       <Card className="hover-rise">
@@ -96,11 +101,43 @@ const StatsPanel: React.FC<Props> = ({ selected }) => {
           <CardTitle className="text-lg">Nearby Amenities</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-            <li>Metro/Transport proximity (simulated)</li>
-            <li>Schools & Hospitals (simulated)</li>
-            <li>Retail & Waterfront access (simulated)</li>
-          </ul>
+          {!selected ? (
+            <div className="text-sm text-muted-foreground">Select a property to see nearby amenities.</div>
+          ) : amenitiesLoading ? (
+            <div className="text-sm text-muted-foreground">Loading amenities...</div>
+          ) : (
+            <Tabs defaultValue="supermarket" className="w-full">
+              <TabsList className="grid grid-cols-3">
+                <TabsTrigger value="supermarket">Supermarkets</TabsTrigger>
+                <TabsTrigger value="school">Schools</TabsTrigger>
+                <TabsTrigger value="metro">Metro</TabsTrigger>
+              </TabsList>
+              {(["supermarket","school","metro"] as const).map((cat) => (
+                <TabsContent key={cat} value={cat} className="mt-3">
+                  {amenities[cat]?.length ? (
+                    <ul className="space-y-2">
+                      {amenities[cat].map((a) => (
+                        <li key={a.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
+                          <div>
+                            <div className="text-sm font-medium">{a.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {fmtDist(a.distanceMeters)} • {fmtMins(estimateDurationSec(a.distanceMeters, 'walking'))} walk • {fmtMins(estimateDurationSec(a.distanceMeters, 'driving'))} drive
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="secondary" onClick={() => onRouteTo?.(a.center, 'walking')}>Walk</Button>
+                            <Button size="sm" onClick={() => onRouteTo?.(a.center, 'driving')}>Drive</Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No results found nearby.</div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
         </CardContent>
       </Card>
 
