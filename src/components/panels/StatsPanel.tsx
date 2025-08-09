@@ -1,7 +1,10 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import type { PropertyPoint } from "@/data/mockProperties";
+import { useAmenities, estimateDurationSec } from "@/hooks/useAmenities";
 
 type Props = {
   selected: PropertyPoint | null;
