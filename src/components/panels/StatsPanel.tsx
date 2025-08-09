@@ -37,6 +37,21 @@ const StatsPanel: React.FC<Props> = ({ selected }) => {
         <CardContent className="space-y-3">
           {selected ? (
             <>
+              {/* Building photo */}
+              <div className="rounded-lg overflow-hidden border">
+                <div className="relative">
+                  <img
+                    src={selected.imageUrl || '/images/buildings/downtown.jpg'}
+                    alt={`${selected.name} building photo in ${selected.community}`}
+                    className="w-full h-40 object-cover"
+                    loading="lazy"
+                  />
+                  <div className="absolute bottom-2 left-2 text-xs px-2 py-1 rounded-md bg-background/70 backdrop-blur border">
+                    {selected.community}
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground">Estimated Market Value</div>

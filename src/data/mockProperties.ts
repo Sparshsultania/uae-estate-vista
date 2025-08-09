@@ -8,6 +8,7 @@ export type PropertyPoint = {
   rentYield: number; // %
   investmentScore: number; // 0-100
   priceTrend: { month: string; value: number }[];
+  imageUrl?: string; // new optional field for building photo
 };
 
 export const properties: PropertyPoint[] = [
@@ -20,6 +21,7 @@ export const properties: PropertyPoint[] = [
     pricePerSqft: 2100,
     rentYield: 6.8,
     investmentScore: 82,
+    imageUrl: "/images/buildings/marina.jpg",
     priceTrend: Array.from({ length: 12 }).map((_, i) => ({
       month: new Date(2024, i, 1).toLocaleString('en', { month: 'short' }),
       value: 1800 + i * 30 + (i % 3 === 0 ? 40 : 0)
@@ -34,6 +36,7 @@ export const properties: PropertyPoint[] = [
     pricePerSqft: 3200,
     rentYield: 5.2,
     investmentScore: 74,
+    imageUrl: "/images/buildings/downtown.jpg",
     priceTrend: Array.from({ length: 12 }).map((_, i) => ({
       month: new Date(2024, i, 1).toLocaleString('en', { month: 'short' }),
       value: 2900 + i * 25 + (i % 4 === 0 ? 60 : 0)
@@ -48,6 +51,7 @@ export const properties: PropertyPoint[] = [
     pricePerSqft: 1100,
     rentYield: 7.6,
     investmentScore: 88,
+    imageUrl: "/images/buildings/jvc.jpg",
     priceTrend: Array.from({ length: 12 }).map((_, i) => ({
       month: new Date(2024, i, 1).toLocaleString('en', { month: 'short' }),
       value: 950 + i * 15 + (i % 5 === 0 ? 30 : 0)
@@ -62,6 +66,7 @@ export const properties: PropertyPoint[] = [
     pricePerSqft: 1700,
     rentYield: 6.1,
     investmentScore: 79,
+    imageUrl: "/images/buildings/corniche.jpg",
     priceTrend: Array.from({ length: 12 }).map((_, i) => ({
       month: new Date(2024, i, 1).toLocaleString('en', { month: 'short' }),
       value: 1500 + i * 18 + (i % 3 === 0 ? 25 : 0)
