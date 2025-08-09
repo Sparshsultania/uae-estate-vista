@@ -120,7 +120,7 @@ useEffect(() => {
         container: container.current,
         style: mapStyle || "mapbox://styles/mapbox/streets-v12",
         center: UAE_CENTER,
-        zoom: 13,
+        zoom: 15,
         pitch: 55,
         bearing: -20,
         projection: 'globe',
@@ -139,6 +139,15 @@ useEffect(() => {
       map.touchZoomRotate.enable();
       map.keyboard.enable();
       map.boxZoom.enable();
+      // Force 3D perspective right after the map fully loads
+      map.on('load', () => {
+        try {
+          if (map.getZoom() < 15) map.setZoom(15);
+          map.setPitch(60);
+          map.setBearing(45);
+          if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+        } catch {}
+      });
 
       // Draw control for search-by-shape (dynamic import to avoid global issues)
       (async () => {
@@ -202,7 +211,7 @@ useEffect(() => {
             // Render 3D for polygon footprints even without explicit height
             filter: ['==', ['geometry-type'], 'Polygon'],
             type: 'fill-extrusion',
-            minzoom: 13,
+            minzoom: 12,
             paint: {
               'fill-extrusion-color': [
                 'case',
