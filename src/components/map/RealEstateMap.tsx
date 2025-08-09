@@ -139,13 +139,47 @@ useEffect(() => {
       map.touchZoomRotate.enable();
       map.keyboard.enable();
       map.boxZoom.enable();
-      // Force 3D perspective right after the map fully loads
+      // Force and ensure 3D perspective right after the map fully loads
       map.on('load', () => {
         try {
           if (map.getZoom() < 15) map.setZoom(15);
           map.setPitch(60);
           map.setBearing(45);
-          if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+          // Add 3D buildings layer if it's not present yet
+          if (!map.getLayer('3d-buildings')) {
+            const layers = map.getStyle().layers || [];
+            const labelLayerId = layers.find((l) => l.type === 'symbol' && (l.layout as any)?.['text-field'])?.id;
+            map.addLayer(
+              {
+                id: '3d-buildings',
+                source: 'composite',
+                'source-layer': 'building',
+                filter: ['==', ['geometry-type'], 'Polygon'],
+                type: 'fill-extrusion',
+                minzoom: 12,
+                paint: {
+                  'fill-extrusion-color': [
+                    'case',
+                    ['boolean', ['feature-state', 'selected'], false], 'hsl(43,95%,55%)',
+                    ['boolean', ['feature-state', 'hover'], false], 'hsl(182, 65%, 55%)',
+                    'hsl(210, 10%, 80%)'
+                  ],
+                  'fill-extrusion-height': [
+                    'case',
+                    ['boolean', ['feature-state', 'selected'], false],
+                    ['*', ['coalesce', ['get', 'height'], 20], 1.2],
+                    ['boolean', ['feature-state', 'hover'], false],
+                    ['*', ['coalesce', ['get', 'height'], 20], 1.08],
+                    ['coalesce', ['get', 'height'], 20]
+                  ],
+                  'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+                  'fill-extrusion-opacity': 0.9,
+                }
+              },
+              labelLayerId ? labelLayerId : undefined
+            );
+          }
+          map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
         } catch {}
       });
 
