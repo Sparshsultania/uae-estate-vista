@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import RealEstateMap, { type RealEstateMapHandle } from "@/components/map/RealEstateMap";
 import SearchBar from "@/components/controls/SearchBar";
 import IdentifierBar, { IdentifierPayload } from "@/components/controls/IdentifierBar";
@@ -77,6 +77,17 @@ const Index: React.FC = () => {
   };
 
   const hasToken = useMemo(() => !!(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN')), [token]);
+
+  // TEMP: preload provided Mapbox public token into localStorage for testing
+  useEffect(() => {
+    const existing = localStorage.getItem('MAPBOX_PUBLIC_TOKEN');
+    const testToken = 'pk.eyJ1IjoidGFoYWFsd2FyZCIsImEiOiJjbWUzdmdwZWwwOXNtMmpzOGl1eXo0dnBvIn0.IcI376nuRKs0ufijqg1LEQ';
+    if (!existing) {
+      localStorage.setItem('MAPBOX_PUBLIC_TOKEN', testToken);
+      setToken(testToken);
+      setShowTokenPanel(false);
+    }
+  }, []);
 
   return (
     <main className="min-h-screen">
