@@ -50,7 +50,16 @@ const Index: React.FC = () => {
   };
 
   const saveToken = () => {
-    localStorage.setItem('MAPBOX_PUBLIC_TOKEN', token);
+    const t = token.trim();
+    if (!t || (!t.startsWith('pk.') && !t.startsWith('pk_'))) {
+      toast({
+        title: 'Invalid token',
+        description: 'Please paste a Mapbox public token (starts with pk.)',
+        variant: 'destructive'
+      } as any);
+      return;
+    }
+    localStorage.setItem('MAPBOX_PUBLIC_TOKEN', t);
     setShowTokenPanel(false);
   };
 
