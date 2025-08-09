@@ -54,7 +54,10 @@ const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect
     mapRef.current = map;
 
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
-    map.scrollZoom.disable();
+    map.scrollZoom.enable();
+    map.touchZoomRotate.enable();
+    map.keyboard.enable();
+    map.boxZoom.enable();
 
     map.on('style.load', () => {
       // Atmosphere
