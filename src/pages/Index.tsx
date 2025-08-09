@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import RealEstateMap, { type RealEstateMapHandle } from "@/components/map/RealEstateMap";
 import SearchBar from "@/components/controls/SearchBar";
-import IdentifierBar, { IdentifierPayload } from "@/components/controls/IdentifierBar";
+import ValuationForm from "@/components/controls/ValuationForm";
 import StatsPanel from "@/components/panels/StatsPanel";
 import { properties, PropertyPoint } from "@/data/mockProperties";
 import { Button } from "@/components/ui/button";
@@ -64,13 +64,6 @@ const Index: React.FC = () => {
     setFlyTo({ center: p.coords, zoom: 16 });
   };
 
-  const handleIdentifierSubmit = (payload: IdentifierPayload) => {
-    // For now, just acknowledge and prepare future matching to official datasets
-    toast({
-      title: 'Lookup submitted',
-      description: `${payload.type.toUpperCase()}: ${payload.value} — we will match this to your unit and fetch estimates.`,
-    });
-  };
 
   const handlePlaceSelect = (pl: { center: [number, number]; bbox?: [number, number, number, number]; name: string }) => {
     setSelected(null);
@@ -114,11 +107,22 @@ const Index: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    document.title = 'Property Valuation Analyser';
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', 'Property Valuation Analyser: input details and instantly center the map to your building or community.');
+  }, []);
+
   return (
     <main className="min-h-screen">
       <header className="sticky top-0 z-20 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container py-4 flex flex-col gap-3">
-          <h1 className="sr-only">UAE Real Estate AI Map — Undervalued Areas & Insights</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Property Valuation Analyser</h1>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-foreground">
               <div className="h-8 w-8 rounded-md" style={{ background: 'linear-gradient(135deg, hsl(182,65%,45%), hsl(152,53%,41%))' }} />
@@ -211,7 +215,16 @@ const Index: React.FC = () => {
               </div>
           </div>
           <div className="pt-2">
-            <IdentifierBar onSubmit={handleIdentifierSubmit} />
+            <ValuationForm
+              token={token}
+              onPlaceSelect={handlePlaceSelect}
+              onCalculate={(vals) => {
+                toast({
+                  title: 'Calculating…',
+                  description: `${vals.beds} bed • ${vals.size || '—'} ${vals.sizeUnit} • ${vals.unitNumber !== 'Select...' ? vals.unitNumber : 'Unit'} in ${vals.building || 'selected area'}`,
+                });
+              }}
+            />
           </div>
         </div>
       </header>
