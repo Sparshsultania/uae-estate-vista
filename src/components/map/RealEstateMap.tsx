@@ -445,14 +445,14 @@ useEffect(() => {
 
   // Update overlays visibility
   useEffect(() => {
-    const map = mapRef.current; if (!map) return;
+    const map = mapRef.current; if (!map || !map.getStyle()) return;
     if (map.getLayer('heatmap-price')) map.setLayoutProperty('heatmap-price', 'visibility', showPriceHeat ? 'visible' : 'none');
     if (map.getLayer('heatmap-yield')) map.setLayoutProperty('heatmap-yield', 'visibility', showYieldHeat ? 'visible' : 'none');
   }, [showPriceHeat, showYieldHeat]);
 
   // Ensure 3D buildings are visible unless isochrones or directions are enabled
   useEffect(() => {
-    const map = mapRef.current; if (!map) return;
+    const map = mapRef.current; if (!map || !map.getStyle()) return;
     const show3d = !(isochrone?.enabled || directionsEnabled);
     if (map.getLayer('3d-buildings')) {
       map.setLayoutProperty('3d-buildings', 'visibility', show3d ? 'visible' : 'none');
@@ -461,7 +461,7 @@ useEffect(() => {
 
   // Isochrone rendering
   useEffect(() => {
-    const map = mapRef.current; if (!map) return;
+    const map = mapRef.current; if (!map || !map.getStyle()) return;
     const cfg = isochrone || {};
     if (!cfg.enabled) {
       if (map.getLayer('isochrone-fill')) map.removeLayer('isochrone-fill');
@@ -521,13 +521,15 @@ useEffect(() => {
     // Helper to remove fallback artifacts
     const removeFallback = () => {
       if (!map) return;
+      // If style is gone (during setStyle or after map.remove), skip cleanup that touches style
+      const hasStyle = !!map.getStyle?.();
       if (routeClickHandlerRef.current) {
         // @ts-ignore
         map.off('click', routeClickHandlerRef.current);
         routeClickHandlerRef.current = null;
       }
-      if (map.getLayer('route-line')) map.removeLayer('route-line');
-      if (map.getSource('route')) map.removeSource('route');
+      if (hasStyle && map.getLayer('route-line')) map.removeLayer('route-line');
+      if (hasStyle && map.getSource('route')) map.removeSource('route');
       routeActiveRef.current = false;
     };
 
@@ -610,7 +612,7 @@ useEffect(() => {
 
   // Search area highlight source
   useEffect(() => {
-    const map = mapRef.current; if (!map) return;
+    const map = mapRef.current; if (!map || !map.getStyle()) return;
     const sourceId = 'search-area';
     if (searchArea) {
       if (map.getSource(sourceId)) {
