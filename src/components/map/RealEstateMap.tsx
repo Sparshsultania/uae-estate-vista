@@ -24,6 +24,7 @@ export type RealEstateMapProps = {
   flyTo?: { center: [number, number]; zoom?: number };
   isochrone?: IsochroneSettings;
   directionsEnabled?: boolean;
+  amenities?: AmenityResult[];
 };
 
 const UAE_CENTER: [number, number] = [55.2744, 25.1972];
@@ -41,7 +42,7 @@ function buildZonesFeatureCollection() {
 
 export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; routeTo: (dest: [number, number], profile?: 'driving'|'walking'|'cycling') => void; };
 
-const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled }, ref) => {
+const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled, amenities }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
@@ -52,6 +53,7 @@ const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(
   // Fallback routing refs
   const routeClickHandlerRef = useRef<((e: mapboxgl.MapMouseEvent) => void) | null>(null);
   const routeActiveRef = useRef<boolean>(false);
+  const amenityMarkersRef = useRef<mapboxgl.Marker[]>([]);
 
   useImperativeHandle(ref, () => ({
     startDrawPolygon: () => {
@@ -693,6 +695,52 @@ useEffect(() => {
     try { map.setStyle(mapStyle); } catch (e) { console.error('Failed to set style', e); }
   }, [mapStyle]);
 
+  // Render amenity markers
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    // Clear previous markers
+    for (const m of amenityMarkersRef.current) m.remove();
+    amenityMarkersRef.current = [];
+    if (!amenities || amenities.length === 0) return;
+
+    const emojiFor = (cat?: string) => {
+      switch (cat) {
+        case 'food_drink': return '🍽️';
+        case 'groceries': return '🛒';
+        case 'atm_bank': return '🏧';
+        case 'pharmacy_hospital': return '💊';
+        case 'school_university': return '🏫';
+        case 'gym_sports': return '🏋️';
+        case 'shopping_mall': return '🛍️';
+        case 'public_transport': return '🚇';
+        default: return '📍';
+      }
+    };
+
+    for (const a of amenities) {
+      const el = document.createElement('div');
+      el.className = `amenity-pin cat-${a.category}`;
+      el.innerHTML = `<span class="amenity-pin-emoji">${emojiFor(a.category)}</span>`;
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat(a.center);
+      const gLink = a.googleUrl || `https://www.google.com/maps/search/?api=1&query=${a.center[1]},${a.center[0]}`;
+      const rating = a.rating ? `<span>★ ${a.rating.toFixed(1)}</span>` : '';
+      const dist = typeof a.distanceMeters === 'number' ? `${Math.round(a.distanceMeters)} m` : '';
+      const websiteLink = a.website ? `<a class="text-primary story-link" href="${a.website}" target="_blank" rel="noreferrer">Website</a>` : '';
+      marker.setPopup(new mapboxgl.Popup({ offset: 10, className: 'quick-popup' }).setHTML(`
+        <div class="p-2 text-sm">
+          <div class="font-medium">${a.name}</div>
+          <div class="text-xs text-muted-foreground space-x-2">${rating} ${dist}</div>
+          <div class="mt-1 text-xs flex gap-2">
+            ${websiteLink}
+            <a class="text-primary story-link" href="${gLink}" target="_blank" rel="noreferrer">Google Maps</a>
+          </div>
+        </div>
+      `));
+      marker.addTo(map);
+      amenityMarkersRef.current.push(marker);
+    }
+  }, [JSON.stringify(amenities)]);
+
   // Search area highlight source
   useEffect(() => {
     const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
@@ -802,5 +850,6 @@ useEffect(() => {
     </div>
   );
 });
+
 
 export default RealEstateMap;

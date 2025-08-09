@@ -24,15 +24,15 @@ const CATEGORY_LABEL: Record<AmenityCategory, string> = {
   public_transport: "Public Transport",
 };
 
-const ALL_CATEGORIES = Object.keys(CATEGORY_LABEL) as AmenityCategory[];
+export const ALL_AMENITY_CATEGORIES = Object.keys(CATEGORY_LABEL) as AmenityCategory[];
 
 type Props = {
   selected: AmenityCategory[];
   onChange: (next: AmenityCategory[]) => void;
   radius: number;
   onRadius: (r: number) => void;
-  alongRoute: boolean;
-  onAlongRoute: (v: boolean) => void;
+  alongRoute?: boolean; // optional; when undefined, hide control
+  onAlongRoute?: (v: boolean) => void;
 };
 
 const AmenityFilters: React.FC<Props> = ({ selected, onChange, radius, onRadius, alongRoute, onAlongRoute }) => {
@@ -41,7 +41,7 @@ const AmenityFilters: React.FC<Props> = ({ selected, onChange, radius, onRadius,
     if (set.has(c)) set.delete(c); else set.add(c);
     onChange(Array.from(set));
   };
-  const selectAll = () => onChange(ALL_CATEGORIES);
+  const selectAll = () => onChange(ALL_AMENITY_CATEGORIES);
   const clearAll = () => onChange([]);
 
   return (
@@ -54,7 +54,7 @@ const AmenityFilters: React.FC<Props> = ({ selected, onChange, radius, onRadius,
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {ALL_CATEGORIES.map((c) => (
+        {ALL_AMENITY_CATEGORIES.map((c) => (
           <button
             key={c}
             onClick={() => toggle(c)}
@@ -72,12 +72,14 @@ const AmenityFilters: React.FC<Props> = ({ selected, onChange, radius, onRadius,
         </div>
         <Slider value={[radius]} onValueChange={(v) => onRadius(v[0])} min={200} max={5000} step={100} />
       </div>
-      <div className="mt-3 flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">Search along route</div>
-        <Button size="sm" variant={alongRoute ? 'default' : 'secondary'} onClick={() => onAlongRoute(!alongRoute)}>
-          {alongRoute ? 'On' : 'Off'}
-        </Button>
-      </div>
+      {typeof alongRoute === 'boolean' && onAlongRoute && (
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">Search along route</div>
+          <Button size="sm" variant={alongRoute ? 'default' : 'secondary'} onClick={() => onAlongRoute(!alongRoute)}>
+            {alongRoute ? 'On' : 'Off'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

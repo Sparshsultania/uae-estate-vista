@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Map, Sparkles, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import AmenityFilters, { type AmenityCategory, ALL_AMENITY_CATEGORIES } from "@/components/controls/AmenityFilters";
+import { useSearchBoxAmenities } from "@/hooks/useSearchBoxAmenities";
 
 function circlePolygon(center: [number, number], radiusMeters: number, points = 64): GeoJSON.Feature<GeoJSON.Polygon> {
   const [lng, lat] = center;
