@@ -357,6 +357,26 @@ useEffect(() => {
             selectedBuildingIds.current.add(fid);
             map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
           });
+
+          // Also select the nearest property within ~300m so we can show the photo + stats popup
+          const distMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return 2 * R * Math.asin(Math.sqrt(a));
+          };
+          const clickLng = e.lngLat.lng; const clickLat = e.lngLat.lat;
+          let nearest: typeof properties[number] | null = null; let min = Infinity;
+          for (const p of properties) {
+            const d = distMeters(clickLat, clickLng, p.coords[1], p.coords[0]);
+            if (d < min) { min = d; nearest = p; }
+          }
+          if (nearest && min <= 300) {
+            onSelect?.(nearest);
+          }
         });
 
         map!.on('mouseenter', 'property-points', () => { map!.getCanvas().style.cursor = 'pointer'; });
@@ -572,25 +592,28 @@ useEffect(() => {
       })
         .setLngLat(selected.coords)
         .setHTML(`
-          <div class="p-4 space-y-3">
-            <div class="font-bold text-lg text-primary">${selected.name}</div>
-            <div class="text-sm text-muted-foreground">${selected.community}</div>
-            <div class="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <div class="font-medium">Value</div>
-                <div class="text-primary">AED ${selected.estimatedValueAED.toLocaleString()}</div>
-              </div>
-              <div>
-                <div class="font-medium">Per Sq.Ft</div>
-                <div>AED ${selected.pricePerSqft}</div>
-              </div>
-              <div>
-                <div class="font-medium">Yield</div>
-                <div class="text-emerald-600">${selected.rentYield}%</div>
-              </div>
-              <div>
-                <div class="font-medium">Score</div>
-                <div class="text-amber-600">${selected.investmentScore}/100</div>
+          <div class="rounded-md overflow-hidden">
+            <img src="/placeholder.svg" alt="${selected.name} photo" class="w-full h-32 object-cover" loading="lazy" />
+            <div class="p-4 space-y-3">
+              <div class="font-bold text-lg text-primary">${selected.name}</div>
+              <div class="text-sm text-muted-foreground">${selected.community}</div>
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <div class="font-medium">Value</div>
+                  <div class="text-primary">AED ${selected.estimatedValueAED.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div class="font-medium">Per Sq.Ft</div>
+                  <div>AED ${selected.pricePerSqft}</div>
+                </div>
+                <div>
+                  <div class="font-medium">Yield</div>
+                  <div class="text-emerald-600">${selected.rentYield}%</div>
+                </div>
+                <div>
+                  <div class="font-medium">Score</div>
+                  <div class="text-amber-600">${selected.investmentScore}/100</div>
+                </div>
               </div>
             </div>
           </div>
