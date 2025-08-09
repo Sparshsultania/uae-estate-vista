@@ -151,9 +151,10 @@ useEffect(() => {
             id: '3d-buildings',
             source: 'composite',
             'source-layer': 'building',
-            filter: ['==', 'extrude', 'true'],
+            // Include buildings that either explicitly request extrusion or have a height
+            filter: ['any', ['==', ['get', 'extrude'], 'true'], ['has', 'height']],
             type: 'fill-extrusion',
-            minzoom: 14,
+            minzoom: 13,
             paint: {
               'fill-extrusion-color': [
                 'case',
