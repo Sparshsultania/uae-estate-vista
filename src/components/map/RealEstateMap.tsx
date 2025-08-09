@@ -3,7 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 // @ts-ignore - plugin has no TS types bundled in some versions
 import MapboxDraw from "mapbox-gl-draw";
-import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import "mapbox-gl-draw/dist/mapbox-gl-draw.css";
 // @ts-ignore - directions plugin may not have TS types
 import MapboxDirections from "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
