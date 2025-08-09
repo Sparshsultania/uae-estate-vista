@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useImperativeHandle } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 // Keep CSS only; Draw JS will be loaded dynamically to avoid global polyfill issues
-import "mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { properties, toFeatureCollection, zones as zoneList, PropertyPoint } from "@/data/mockProperties";
 
 export type RealEstateMapProps = {
@@ -30,13 +30,27 @@ function buildZonesFeatureCollection() {
   } satisfies GeoJSON.FeatureCollection<GeoJSON.Polygon>;
 }
 
-const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo }) => {
+export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; };
+
+const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
   const selectedBuildingIds = useRef<Set<number | string>>(new Set());
   const hoverRaf = useRef<number | null>(null);
   const drawRef = useRef<any | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    startDrawPolygon: () => {
+      const map = mapRef.current;
+      if (!map) return;
+      try { drawRef.current?.changeMode?.('draw_polygon'); } catch (e) { console.error('startDrawPolygon failed', e); }
+    },
+    clearDraw: () => {
+      try { drawRef.current?.deleteAll?.(); } catch (e) { console.error('clearDraw failed', e); }
+      onAreaChange?.(null);
+    },
+  }), [onAreaChange]);
 
   const propertiesFC = useMemo(() => toFeatureCollection(properties), []);
   const zonesFC = useMemo(() => buildZonesFeatureCollection(), []);
@@ -79,10 +93,10 @@ useEffect(() => {
           if (typeof (globalThis as any).global === 'undefined') {
             (globalThis as any).global = globalThis;
           }
-          const DrawMod: any = await import('mapbox-gl-draw');
+          const DrawMod: any = await import('@mapbox/mapbox-gl-draw');
           const DrawCtor = DrawMod?.default ?? DrawMod;
           const draw = new DrawCtor({ displayControlsDefault: false, controls: { polygon: true, trash: true } });
-          map.addControl(draw, 'top-left');
+          map.addControl(draw, 'top-right');
           drawRef.current = draw;
 
           map.on('draw.create', (e: any) => {
@@ -112,6 +126,11 @@ useEffect(() => {
           'high-color': 'rgb(210, 230, 255)',
           'horizon-blend': 0.2,
         });
+
+        // Ensure Draw layers persist after style changes
+        try { if (drawRef.current?.add) { drawRef.current.add(map!); } } catch (e) { console.warn('draw re-add failed', e); }
+
+        // 3D buildings
 
         // 3D buildings
         const layers = map!.getStyle().layers || [];
@@ -495,6 +514,6 @@ useEffect(() => {
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent to-background/10 rounded-xl" />
     </div>
   );
-};
+});
 
 export default RealEstateMap;

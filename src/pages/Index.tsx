@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import RealEstateMap from "@/components/map/RealEstateMap";
+import React, { useMemo, useState, useRef } from "react";
+import RealEstateMap, { type RealEstateMapHandle } from "@/components/map/RealEstateMap";
 import SearchBar from "@/components/controls/SearchBar";
 import IdentifierBar, { IdentifierPayload } from "@/components/controls/IdentifierBar";
 import StatsPanel from "@/components/panels/StatsPanel";
@@ -37,6 +37,8 @@ const Index: React.FC = () => {
   const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/streets-v12');
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom?: number } | null>(null);
   const { toast } = useToast();
+
+  const mapRef = useRef<RealEstateMapHandle | null>(null);
 
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
@@ -135,6 +137,10 @@ const Index: React.FC = () => {
                 <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite</option>
               </select>
             </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button size="sm" onClick={() => mapRef.current?.startDrawPolygon()}>Draw area</Button>
+              <Button size="sm" variant="secondary" onClick={() => mapRef.current?.clearDraw()}>Clear</Button>
+            </div>
           </div>
           <div className="pt-2">
             <IdentifierBar onSubmit={handleIdentifierSubmit} />
@@ -145,7 +151,7 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <RealEstateMap token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} onAreaChange={setSearchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} />
+            <RealEstateMap ref={mapRef} token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} onAreaChange={setSearchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
                 <Card className="p-4 glass-panel animate-enter">
