@@ -39,8 +39,17 @@ const Index: React.FC = () => {
   const { toast } = useToast();
 
   const mapRef = useRef<RealEstateMapHandle | null>(null);
-  const [enableNeighborhoodPicker, setEnableNeighborhoodPicker] = useState(false);
-  const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<{ id: string; name?: string }[]>([]);
+  const [isoEnabled, setIsoEnabled] = useState(false);
+  const [isoProfile, setIsoProfile] = useState<'driving'|'walking'|'cycling'>('driving');
+  const [isoPreset, setIsoPreset] = useState<'10-20-30'|'5-10-15'|'15-30-45'>('10-20-30');
+  const isoMinutes = useMemo(() => {
+    switch (isoPreset) {
+      case '5-10-15': return [5,10,15];
+      case '15-30-45': return [15,30,45];
+      default: return [10,20,30];
+    }
+  }, [isoPreset]);
+  const [directionsEnabled, setDirectionsEnabled] = useState(false);
 
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
@@ -150,20 +159,40 @@ const Index: React.FC = () => {
                 <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite</option>
               </select>
             </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button size="sm" onClick={() => mapRef.current?.startDrawPolygon()}>Draw area</Button>
-              <Button size="sm" variant="secondary" onClick={() => mapRef.current?.clearDraw()}>Clear</Button>
-              <Separator orientation="vertical" className="h-6" />
-              <div className="flex items-center gap-2">
-                <Switch id="toggle-boundaries" checked={enableNeighborhoodPicker} onCheckedChange={setEnableNeighborhoodPicker} />
-                <label htmlFor="toggle-boundaries" className="text-sm">Boundaries</label>
-                {selectedNeighborhoods.length > 0 && (
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedNeighborhoods([])}>
-                    Clear neighborhoods ({selectedNeighborhoods.length})
-                  </Button>
-                )}
+              <div className="flex items-center gap-2 ml-auto">
+                <Button size="sm" onClick={() => mapRef.current?.startDrawPolygon()}>Draw area</Button>
+                <Button size="sm" variant="secondary" onClick={() => mapRef.current?.clearDraw()}>Clear</Button>
+                <Separator orientation="vertical" className="h-6" />
+                <div className="flex items-center gap-2">
+                  <Switch id="toggle-iso" checked={isoEnabled} onCheckedChange={setIsoEnabled} />
+                  <label htmlFor="toggle-iso" className="text-sm">Isochrones</label>
+                  <select
+                    value={isoProfile}
+                    onChange={(e) => setIsoProfile(e.target.value as any)}
+                    className="px-2 py-1 text-xs border rounded-md bg-background"
+                    disabled={!isoEnabled}
+                  >
+                    <option value="driving">Driving</option>
+                    <option value="walking">Walking</option>
+                    <option value="cycling">Cycling</option>
+                  </select>
+                  <select
+                    value={isoPreset}
+                    onChange={(e) => setIsoPreset(e.target.value as any)}
+                    className="px-2 py-1 text-xs border rounded-md bg-background"
+                    disabled={!isoEnabled}
+                  >
+                    <option value="5-10-15">5 / 10 / 15 min</option>
+                    <option value="10-20-30">10 / 20 / 30 min</option>
+                    <option value="15-30-45">15 / 30 / 45 min</option>
+                  </select>
+                </div>
+                <Separator orientation="vertical" className="h-6" />
+                <div className="flex items-center gap-2">
+                  <Switch id="toggle-dir" checked={directionsEnabled} onCheckedChange={setDirectionsEnabled} />
+                  <label htmlFor="toggle-dir" className="text-sm">Directions</label>
+                </div>
               </div>
-            </div>
           </div>
           <div className="pt-2">
             <IdentifierBar onSubmit={handleIdentifierSubmit} />
@@ -174,7 +203,7 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <RealEstateMap ref={mapRef} token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} onAreaChange={setSearchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} enableNeighborhoodPicker={enableNeighborhoodPicker} selectedNeighborhoods={selectedNeighborhoods} onNeighborhoodsChange={setSelectedNeighborhoods} />
+            <RealEstateMap ref={mapRef} token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} onAreaChange={setSearchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} isochrone={{ enabled: isoEnabled, profile: isoProfile, minutes: isoMinutes }} directionsEnabled={directionsEnabled} />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
                 <Card className="p-4 glass-panel animate-enter">

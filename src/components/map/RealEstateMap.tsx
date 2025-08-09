@@ -3,7 +3,14 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 // Keep CSS only; Draw JS will be loaded dynamically to avoid global polyfill issues
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import { properties, toFeatureCollection, zones as zoneList, PropertyPoint } from "@/data/mockProperties";
+
+export type IsochroneSettings = {
+  enabled?: boolean;
+  profile?: 'driving' | 'walking' | 'cycling';
+  minutes?: number[];
+};
 
 export type RealEstateMapProps = {
   token?: string;
@@ -15,12 +22,8 @@ export type RealEstateMapProps = {
   onAreaChange?: (area: GeoJSON.Feature<GeoJSON.Polygon> | null) => void;
   mapStyle?: string; // e.g. mapbox://styles/mapbox/streets-v12
   flyTo?: { center: [number, number]; zoom?: number };
-  // Neighborhood picker (Mapbox Boundaries)
-  enableNeighborhoodPicker?: boolean;
-  selectedNeighborhoods?: { id: string; name?: string }[];
-  onNeighborhoodsChange?: (items: { id: string; name?: string }[]) => void;
-  boundariesTileset?: string; // e.g. mapbox.boundaries-neighborhoods-v1
-  boundariesSourceLayer?: string; // e.g. boundaries_neighborhoods
+  isochrone?: IsochroneSettings;
+  directionsEnabled?: boolean;
 };
 
 const UAE_CENTER: [number, number] = [54.5, 24.2];
@@ -38,14 +41,14 @@ function buildZonesFeatureCollection() {
 
 export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; };
 
-const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, enableNeighborhoodPicker, selectedNeighborhoods, onNeighborhoodsChange, boundariesTileset, boundariesSourceLayer }, ref) => {
+const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
   const selectedBuildingIds = useRef<Set<number | string>>(new Set());
   const hoverRaf = useRef<number | null>(null);
   const drawRef = useRef<any | null>(null);
-  const nbhdSelectedIdsRef = useRef<Set<string>>(new Set());
+  const directionsCtlRef = useRef<any | null>(null);
 
   useImperativeHandle(ref, () => ({
     startDrawPolygon: () => {
@@ -305,61 +308,7 @@ useEffect(() => {
           }
         });
 
-        // Neighborhoods (Mapbox Boundaries) — requires Boundaries entitlement on your Mapbox token
-        try {
-          const tileset = boundariesTileset || 'mapbox.boundaries-neighborhoods-v1';
-          const srcLayer = boundariesSourceLayer || 'boundaries_neighborhoods';
-          if (!map!.getSource('mb-neighborhoods')) {
-            map!.addSource('mb-neighborhoods', { type: 'vector', url: `mapbox://${tileset}` });
-          }
-          if (!map!.getLayer('nbhd-fill')) {
-            map!.addLayer({
-              id: 'nbhd-fill',
-              type: 'fill',
-              source: 'mb-neighborhoods',
-              'source-layer': srcLayer,
-              paint: { 'fill-color': 'hsl(210,30%,60%)', 'fill-opacity': 0.06 }
-            });
-          }
-          if (!map!.getLayer('nbhd-outline')) {
-            map!.addLayer({
-              id: 'nbhd-outline',
-              type: 'line',
-              source: 'mb-neighborhoods',
-              'source-layer': srcLayer,
-              paint: { 'line-color': 'hsl(210,30%,50%)', 'line-width': 1, 'line-opacity': 0.5 }
-            });
-          }
-          if (!map!.getLayer('nbhd-selected')) {
-            map!.addLayer({
-              id: 'nbhd-selected',
-              type: 'line',
-              source: 'mb-neighborhoods',
-              'source-layer': srcLayer,
-              paint: { 'line-color': 'hsl(152,53%,41%)', 'line-width': 3, 'line-opacity': 0.9 },
-              filter: ['in', ['get', 'mapbox_id'], ['literal', []]]
-            });
-          }
-          // pointer cursor and click toggle
-          map!.on('mouseenter', 'nbhd-fill', () => { map!.getCanvas().style.cursor = 'pointer'; });
-          map!.on('mouseleave', 'nbhd-fill', () => { map!.getCanvas().style.cursor = ''; });
-          map!.on('click', 'nbhd-fill', (e) => {
-            const f = e.features?.[0] as mapboxgl.MapboxGeoJSONFeature | undefined;
-            if (!f) return;
-            const pid = (f.properties?.mapbox_id ?? f.properties?.id ?? f.id)?.toString();
-            if (!pid) return;
-            const name = (f.properties?.name_en ?? f.properties?.name ?? f.properties?.NAME ?? '').toString();
-            const set = nbhdSelectedIdsRef.current;
-            if (set.has(pid)) set.delete(pid); else set.add(pid);
-            const list = Array.from(set);
-            if (map!.getLayer('nbhd-selected')) {
-              map!.setFilter('nbhd-selected', ['in', ['get', 'mapbox_id'], ['literal', list]]);
-            }
-            onNeighborhoodsChange?.(list.map((id) => ({ id, name: id === pid ? name : undefined })));
-          });
-        } catch (err) {
-          console.warn('Mapbox Boundaries neighborhoods not available. Check your tileset or token entitlements.', err);
-        }
+        // Neighborhoods feature removed
 
         // Interactions
         map!.on('mousemove', '3d-buildings', (e) => {
@@ -466,24 +415,94 @@ useEffect(() => {
     if (map.getLayer('heatmap-yield')) map.setLayoutProperty('heatmap-yield', 'visibility', showYieldHeat ? 'visible' : 'none');
   }, [showPriceHeat, showYieldHeat]);
 
-  // Neighborhood picker visibility toggle
+  // Isochrone rendering
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
-    const vis = enableNeighborhoodPicker ? 'visible' : 'none';
-    ['nbhd-fill','nbhd-outline','nbhd-selected'].forEach((id) => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
-    });
-  }, [enableNeighborhoodPicker]);
-
-  // Sync selected neighborhoods from parent
-  useEffect(() => {
-    const map = mapRef.current; if (!map) return;
-    const ids = (selectedNeighborhoods || []).map((i) => i.id);
-    nbhdSelectedIdsRef.current = new Set(ids);
-    if (map.getLayer('nbhd-selected')) {
-      map.setFilter('nbhd-selected', ['in', ['get', 'mapbox_id'], ['literal', ids]]);
+    const cfg = isochrone || {};
+    if (!cfg.enabled) {
+      if (map.getLayer('isochrone-fill')) map.removeLayer('isochrone-fill');
+      if (map.getLayer('isochrone-outline')) map.removeLayer('isochrone-outline');
+      if (map.getSource('isochrones')) map.removeSource('isochrones');
+      return;
     }
-  }, [selectedNeighborhoods]);
+    const origin: [number, number] = selected?.coords || (map.getCenter().toArray() as [number, number]);
+    const mins = (cfg.minutes && cfg.minutes.length ? cfg.minutes : [10, 20, 30]);
+    const contours = mins.join(',');
+    const profile = cfg.profile || 'driving';
+    const accessToken = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
+    const url = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${origin[0]},${origin[1]}?contours_minutes=${contours}&polygons=true&denoise=1&access_token=${accessToken}`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((geo) => {
+        if (!geo || !geo.features) return;
+        if (map.getSource('isochrones')) {
+          (map.getSource('isochrones') as mapboxgl.GeoJSONSource).setData(geo);
+        } else {
+          map.addSource('isochrones', { type: 'geojson', data: geo });
+          map.addLayer({
+            id: 'isochrone-fill',
+            type: 'fill',
+            source: 'isochrones',
+            paint: {
+              'fill-color': [
+                'match',
+                ['to-number', ['get', 'contour']],
+                mins[0], 'hsla(182,65%,45%,0.30)',
+                mins[1] ?? -1, 'hsla(152,53%,41%,0.22)',
+                mins[2] ?? -1, 'hsla(43,95%,55%,0.16)',
+                'hsla(210,30%,60%,0.12)'
+              ],
+              'fill-opacity': 0.8
+            }
+          });
+          map.addLayer({
+            id: 'isochrone-outline',
+            type: 'line',
+            source: 'isochrones',
+            paint: {
+              'line-color': 'hsl(182,65%,45%)',
+              'line-width': 2,
+              'line-opacity': 0.8
+            }
+          });
+        }
+      })
+      .catch((e) => console.warn('Isochrone fetch failed', e));
+  }, [isochrone?.enabled, isochrone?.profile, JSON.stringify(isochrone?.minutes), selected, token]);
+
+  // Directions control toggle
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    (async () => {
+      if (directionsEnabled) {
+        try {
+          const mod: any = await import('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions');
+          const Directions = mod.default || mod;
+          const ctl = new Directions({
+            accessToken: mapboxgl.accessToken,
+            unit: 'metric',
+            profile: 'mapbox/driving'
+          });
+          map.addControl(ctl, 'top-left');
+          directionsCtlRef.current = ctl;
+          if (selected?.coords) ctl.setOrigin(selected.coords);
+        } catch (e) { console.error('Failed to init Directions', e); }
+      } else {
+        if (directionsCtlRef.current) {
+          try { map.removeControl(directionsCtlRef.current); } catch {}
+          directionsCtlRef.current = null;
+        }
+      }
+    })();
+  }, [directionsEnabled]);
+
+  // Keep directions origin in sync with selected property
+  useEffect(() => {
+    const ctl = directionsCtlRef.current;
+    if (ctl && selected?.coords) {
+      try { ctl.setOrigin(selected.coords); } catch {}
+    }
+  }, [selected]);
 
   // Update base style when mapStyle changes
   useEffect(() => {
