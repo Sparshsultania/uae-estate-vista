@@ -436,6 +436,15 @@ useEffect(() => {
     if (map.getLayer('heatmap-yield')) map.setLayoutProperty('heatmap-yield', 'visibility', showYieldHeat ? 'visible' : 'none');
   }, [showPriceHeat, showYieldHeat]);
 
+  // Ensure 3D buildings are visible unless isochrones or directions are enabled
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+    const show3d = !(isochrone?.enabled || directionsEnabled);
+    if (map.getLayer('3d-buildings')) {
+      map.setLayoutProperty('3d-buildings', 'visibility', show3d ? 'visible' : 'none');
+    }
+  }, [isochrone?.enabled, directionsEnabled]);
+
   // Isochrone rendering
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
