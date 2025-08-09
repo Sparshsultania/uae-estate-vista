@@ -149,12 +149,17 @@ useEffect(() => {
         const layers = map!.getStyle().layers || [];
         const labelLayerId = layers.find((l) => l.type === 'symbol' && (l.layout as any)?.['text-field'])?.id;
 
+        // Recreate 3D buildings layer safely (avoid duplicate-id errors after style changes)
+        if (map!.getLayer('3d-buildings')) {
+          try { map!.removeLayer('3d-buildings'); } catch {}
+        }
+
         map!.addLayer(
           {
             id: '3d-buildings',
             source: 'composite',
             'source-layer': 'building',
-            // Render polygons as 3D extrusions; fallback height if missing
+            // Render 3D for polygon footprints even without explicit height
             filter: ['==', ['geometry-type'], 'Polygon'],
             type: 'fill-extrusion',
             minzoom: 13,
@@ -179,6 +184,12 @@ useEffect(() => {
           },
           labelLayerId ? labelLayerId : undefined
         );
+        // Respect current toggles immediately
+        if (isochrone?.enabled || directionsEnabled) {
+          map!.setLayoutProperty('3d-buildings', 'visibility', 'none');
+        } else {
+          map!.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+        }
 
         // Properties point source & layers
         map!.addSource('properties', { type: 'geojson', data: propertiesFC });
@@ -503,7 +514,85 @@ useEffect(() => {
       .catch((e) => console.warn('Isochrone fetch failed', e));
   }, [isochrone?.enabled, isochrone?.profile, JSON.stringify(isochrone?.minutes), selected, token]);
 
-  // (removed legacy directions effect - now handled above with fallback)
+  // Directions control toggle with robust fallback
+  useEffect(() => {
+    const map = mapRef.current; if (!map) return;
+
+    // Helper to remove fallback artifacts
+    const removeFallback = () => {
+      if (!map) return;
+      if (routeClickHandlerRef.current) {
+        // @ts-ignore
+        map.off('click', routeClickHandlerRef.current);
+        routeClickHandlerRef.current = null;
+      }
+      if (map.getLayer('route-line')) map.removeLayer('route-line');
+      if (map.getSource('route')) map.removeSource('route');
+      routeActiveRef.current = false;
+    };
+
+    (async () => {
+      if (directionsEnabled) {
+        // Hide 3D while routing for clarity
+        if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'none');
+        try {
+          // Some builds require global mapping
+          ;(globalThis as any).mapboxgl = mapboxgl;
+          const mod: any = await import('@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions');
+          const Directions = mod.default || mod;
+          const ctl = new Directions({ accessToken: mapboxgl.accessToken, unit: 'metric', profile: 'mapbox/driving' });
+          map.addControl(ctl, 'top-left');
+          directionsCtlRef.current = ctl;
+          if (selected?.coords) ctl.setOrigin(selected.coords);
+        } catch (e) {
+          console.error('Directions control failed, using fallback routing', e);
+          const accessToken = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
+          const ensureSource = () => {
+            if (!map.getSource('route')) {
+              map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } as any });
+              map.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': 'hsl(182,65%,45%)', 'line-width': 4, 'line-opacity': 0.85 } });
+            }
+          };
+          const fetchRoute = async (o: [number,number], d: [number,number]) => {
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${o[0]},${o[1]};${d[0]},${d[1]}?geometries=geojson&overview=full&access_token=${accessToken}`;
+            const res = await fetch(url);
+            const json = await res.json();
+            const geom = json?.routes?.[0]?.geometry;
+            if (!geom) return;
+            ensureSource();
+            (map.getSource('route') as mapboxgl.GeoJSONSource).setData({ type: 'Feature', geometry: geom, properties: {} } as any);
+          };
+          const handler = (e: any) => {
+            const origin: [number,number] = selected?.coords ?? (map.getCenter().toArray() as [number,number]);
+            const dest: [number,number] = [e.lngLat.lng, e.lngLat.lat];
+            fetchRoute(origin, dest);
+          };
+          routeClickHandlerRef.current = handler;
+          // @ts-ignore
+          map.on('click', handler);
+          routeActiveRef.current = true;
+        }
+      } else {
+        // Turn off
+        if (directionsCtlRef.current) {
+          try { map.removeControl(directionsCtlRef.current); } catch {}
+          directionsCtlRef.current = null;
+        }
+        removeFallback();
+        // Re-show 3D if Isochrones isn't active
+        if (map.getLayer('3d-buildings') && !(isochrone?.enabled)) map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+      }
+    })();
+
+    return () => {
+      // cleanup when dependencies change
+      if (directionsCtlRef.current) {
+        try { map.removeControl(directionsCtlRef.current); } catch {}
+        directionsCtlRef.current = null;
+      }
+      removeFallback();
+    };
+  }, [directionsEnabled, selected, token, isochrone?.enabled]);
 
   // Keep directions origin in sync with selected property
   useEffect(() => {
