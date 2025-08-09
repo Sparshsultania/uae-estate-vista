@@ -35,11 +35,13 @@ const Index: React.FC = () => {
   const [showTokenPanel, setShowTokenPanel] = useState<boolean>(() => !localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
   const [dataSource, setDataSource] = useState<'all' | 'title-deed' | 'oqoo' | 'dewa'>('all');
   const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/streets-v12');
+  const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom?: number } | null>(null);
   const { toast } = useToast();
 
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
     setSearchArea(circlePolygon(p.coords, 1200));
+    setFlyTo({ center: p.coords, zoom: 16 });
   };
 
   const handleIdentifierSubmit = (payload: IdentifierPayload) => {
@@ -48,6 +50,12 @@ const Index: React.FC = () => {
       title: 'Lookup submitted',
       description: `${payload.type.toUpperCase()}: ${payload.value} — we will match this to your unit and fetch estimates.`,
     });
+  };
+
+  const handlePlaceSelect = (pl: { center: [number, number]; bbox?: [number, number, number, number]; name: string }) => {
+    setSelected(null);
+    setSearchArea(circlePolygon(pl.center, 1500));
+    setFlyTo({ center: pl.center, zoom: 13 });
   };
 
   const saveToken = () => {
@@ -80,7 +88,7 @@ const Index: React.FC = () => {
               </div>
             </div>
             <div className="hidden md:block">
-              <SearchBar items={properties} onSelect={handleSelect} />
+              <SearchBar items={properties} onSelect={handleSelect} token={token} onPlaceSelect={handlePlaceSelect} />
             </div>
             <div className="flex items-center gap-2">
               <Button variant="secondary" size="sm" onClick={() => setShowTokenPanel((s) => !s)}>
@@ -89,7 +97,7 @@ const Index: React.FC = () => {
             </div>
           </div>
           <div className="md:hidden">
-            <SearchBar items={properties} onSelect={handleSelect} />
+            <SearchBar items={properties} onSelect={handleSelect} token={token} onPlaceSelect={handlePlaceSelect} />
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
@@ -137,7 +145,7 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <RealEstateMap token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} mapStyle={mapStyle} />
+            <RealEstateMap token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} mapStyle={mapStyle} flyTo={flyTo || undefined} />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
                 <Card className="p-4 glass-panel animate-enter">

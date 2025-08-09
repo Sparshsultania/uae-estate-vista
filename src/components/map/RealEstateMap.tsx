@@ -12,6 +12,7 @@ export type RealEstateMapProps = {
   searchArea?: GeoJSON.Feature<GeoJSON.Polygon> | null;
   onAreaChange?: (area: GeoJSON.Feature<GeoJSON.Polygon> | null) => void;
   mapStyle?: string; // e.g. mapbox://styles/mapbox/streets-v12
+  flyTo?: { center: [number, number]; zoom?: number };
 };
 
 const UAE_CENTER: [number, number] = [54.5, 24.2];
@@ -27,7 +28,7 @@ function buildZonesFeatureCollection() {
   } satisfies GeoJSON.FeatureCollection<GeoJSON.Polygon>;
 }
 
-const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, mapStyle }) => {
+const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, mapStyle, flyTo }) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
@@ -348,6 +349,14 @@ useEffect(() => {
       if (map.getSource(sourceId)) map.removeSource(sourceId);
     }
   }, [searchArea]);
+
+  // Fly when requested (e.g., geocode selection)
+  useEffect(() => {
+    const map = mapRef.current; if (!map || !flyTo) return;
+    try {
+      map.flyTo({ center: flyTo.center, zoom: flyTo.zoom ?? 13, speed: 0.9, curve: 1.2, essential: true });
+    } catch (e) { console.error('flyTo failed', e); }
+  }, [flyTo]);
 
   // Fly to selected property with enhanced 3D view
   useEffect(() => {
