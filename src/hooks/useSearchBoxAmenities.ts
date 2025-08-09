@@ -187,7 +187,9 @@ export function useSearchBoxAmenities(opts: UseAmenitiesOptions) {
           const key = r.id || `${r.center[0].toFixed(5)},${r.center[1].toFixed(5)}`;
           if (!seen.has(key)) seen.set(key, r);
         }
-        const list = Array.from(seen.values());
+        let list = Array.from(seen.values());
+        // Filter by radius if distance known
+        list = list.filter((a) => (a.distanceMeters == null) || (a.distanceMeters <= radiusMeters));
         // Sort by distance if available
         list.sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity));
         setResults(list);

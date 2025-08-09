@@ -695,51 +695,156 @@ useEffect(() => {
     try { map.setStyle(mapStyle); } catch (e) { console.error('Failed to set style', e); }
   }, [mapStyle]);
 
-  // Render amenity markers
+  // Render amenities via GeoJSON source + symbol layers (Maki icons)
   useEffect(() => {
     const map = mapRef.current; if (!map) return;
-    // Clear previous markers
-    for (const m of amenityMarkersRef.current) m.remove();
-    amenityMarkersRef.current = [];
-    if (!amenities || amenities.length === 0) return;
 
-    const emojiFor = (cat?: string) => {
-      switch (cat) {
-        case 'food_drink': return '🍽️';
-        case 'groceries': return '🛒';
-        case 'atm_bank': return '🏧';
-        case 'pharmacy_hospital': return '💊';
-        case 'school_university': return '🏫';
-        case 'gym_sports': return '🏋️';
-        case 'shopping_mall': return '🛍️';
-        case 'public_transport': return '🚇';
-        default: return '📍';
+    const srcId = 'amenities';
+    const bubbleId = 'amenities-bubbles';
+    const symbolId = 'amenities-symbols';
+
+    const data: GeoJSON.FeatureCollection<GeoJSON.Point, any> = {
+      type: 'FeatureCollection',
+      features: (amenities ?? []).map((a) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: a.center },
+        properties: {
+          id: a.id,
+          name: a.name,
+          category: a.category,
+          distance: a.distanceMeters ?? null,
+          rating: a.rating ?? null,
+          website: a.website ?? null,
+          gUrl: a.googleUrl ?? null,
+        },
+      })),
+    } as any;
+
+    const ensureLayers = () => {
+      // Source
+      if (map.getSource(srcId)) {
+        (map.getSource(srcId) as mapboxgl.GeoJSONSource).setData(data);
+      } else {
+        map.addSource(srcId, { type: 'geojson', data });
       }
+
+      // Remove old layers to avoid duplicate id errors (after style changes)
+      if (map.getLayer(bubbleId)) try { map.removeLayer(bubbleId); } catch {}
+      if (map.getLayer(symbolId)) try { map.removeLayer(symbolId); } catch {}
+
+      const layers = map.getStyle().layers || [];
+      const firstSymbol = layers.find((l) => l.type === 'symbol')?.id;
+
+      // Bubbles for subtle animated feel
+      map.addLayer({
+        id: bubbleId,
+        type: 'circle',
+        source: srcId,
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            10, 4,
+            16, 8
+          ],
+          'circle-color': [
+            'match', ['get', 'category'],
+            'food_drink', 'hsl(var(--brand-gold))',
+            'groceries', 'hsl(var(--brand-emerald))',
+            'atm_bank', 'hsl(210,30%,55%)',
+            'pharmacy_hospital', 'hsl(350,75%,60%)',
+            'school_university', 'hsl(200,90%,55%)',
+            'gym_sports', 'hsl(260,70%,60%)',
+            'shopping_mall', 'hsl(280,70%,60%)',
+            'public_transport', 'hsl(190,100%,55%)',
+            'hsl(182,65%,45%)'
+          ],
+          'circle-opacity': 0.3
+        }
+      }, firstSymbol);
+
+      // Symbols with Maki icons
+      map.addLayer({
+        id: symbolId,
+        type: 'symbol',
+        source: srcId,
+        layout: {
+          'icon-image': [
+            'match', ['get', 'category'],
+            'food_drink', 'restaurant-15',
+            'groceries', 'grocery-15',
+            'atm_bank', 'bank-15',
+            'pharmacy_hospital', 'pharmacy-15',
+            'school_university', 'college-15',
+            'gym_sports', 'fitness-15',
+            'shopping_mall', 'shop-15',
+            'public_transport', 'bus-15',
+            'marker-15'
+          ],
+          'icon-size': [
+            'interpolate', ['linear'], ['zoom'],
+            10, 0.8,
+            16, 1.2
+          ],
+          'icon-allow-overlap': true,
+          'text-field': ['step', ['zoom'], '', 15, ['get', 'name']],
+          'text-size': 12,
+          'text-offset': [0, 1.1],
+          'text-anchor': 'top',
+        },
+        paint: {
+          'text-color': 'hsl(210, 10%, 20%)',
+          'text-halo-color': 'hsl(0, 0%, 100%)',
+          'text-halo-width': 1,
+        }
+      }, firstSymbol);
+
+      // Interactions: popup
+      const onEnter = () => { map.getCanvas().style.cursor = 'pointer'; };
+      const onLeave = () => { map.getCanvas().style.cursor = ''; };
+      const onClick = (e: any) => {
+        const f = e.features?.[0]; if (!f) return;
+        const c = f.geometry.coordinates as [number, number];
+        const p = f.properties || {};
+        const rating = p.rating ? `★ ${Number(p.rating).toFixed(1)}` : '';
+        const dist = p.distance ? `${Math.round(Number(p.distance))} m` : '';
+        const gLink = p.gUrl || `https://www.google.com/maps/search/?api=1&query=${c[1]},${c[0]}`;
+        const website = p.website ? `<a class="text-primary story-link" href="${p.website}" target="_blank" rel="noreferrer">Website</a>` : '';
+        new mapboxgl.Popup({ offset: 10, className: 'quick-popup' })
+          .setLngLat(c)
+          .setHTML(`
+            <div class="p-2 text-sm">
+              <div class="font-medium">${p.name || ''}</div>
+              <div class="text-xs text-muted-foreground space-x-2">${rating} ${dist}</div>
+              <div class="mt-1 text-xs flex gap-2">
+                ${website}
+                <a class="text-primary story-link" href="${gLink}" target="_blank" rel="noreferrer">Google Maps</a>
+              </div>
+            </div>
+          `)
+          .addTo(map);
+      };
+
+      try { map.off('mouseenter', symbolId, onEnter); } catch {}
+      try { map.off('mouseleave', symbolId, onLeave); } catch {}
+      try { map.off('click', symbolId, onClick); } catch {}
+      map.on('mouseenter', symbolId, onEnter);
+      map.on('mouseleave', symbolId, onLeave);
+      map.on('click', symbolId, onClick);
     };
 
-    for (const a of amenities) {
-      const el = document.createElement('div');
-      el.className = `amenity-pin cat-${a.category}`;
-      el.innerHTML = `<span class="amenity-pin-emoji">${emojiFor(a.category)}</span>`;
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat(a.center);
-      const gLink = a.googleUrl || `https://www.google.com/maps/search/?api=1&query=${a.center[1]},${a.center[0]}`;
-      const rating = a.rating ? `<span>★ ${a.rating.toFixed(1)}</span>` : '';
-      const dist = typeof a.distanceMeters === 'number' ? `${Math.round(a.distanceMeters)} m` : '';
-      const websiteLink = a.website ? `<a class="text-primary story-link" href="${a.website}" target="_blank" rel="noreferrer">Website</a>` : '';
-      marker.setPopup(new mapboxgl.Popup({ offset: 10, className: 'quick-popup' }).setHTML(`
-        <div class="p-2 text-sm">
-          <div class="font-medium">${a.name}</div>
-          <div class="text-xs text-muted-foreground space-x-2">${rating} ${dist}</div>
-          <div class="mt-1 text-xs flex gap-2">
-            ${websiteLink}
-            <a class="text-primary story-link" href="${gLink}" target="_blank" rel="noreferrer">Google Maps</a>
-          </div>
-        </div>
-      `));
-      marker.addTo(map);
-      amenityMarkersRef.current.push(marker);
+    if (!map.isStyleLoaded()) {
+      map.once('style.load', ensureLayers);
+    } else {
+      ensureLayers();
     }
-  }, [JSON.stringify(amenities)]);
+
+    return () => {
+      if (!map) return;
+      if (map.getLayer(symbolId)) try { map.removeLayer(symbolId); } catch {}
+      if (map.getLayer(bubbleId)) try { map.removeLayer(bubbleId); } catch {}
+      if (map.getSource(srcId)) try { map.removeSource(srcId); } catch {}
+    };
+  }, [JSON.stringify(amenities), mapStyle]);
 
   // Search area highlight source
   useEffect(() => {
