@@ -11,6 +11,7 @@ export type RealEstateMapProps = {
   showYieldHeat?: boolean;
   searchArea?: GeoJSON.Feature<GeoJSON.Polygon> | null;
   onAreaChange?: (area: GeoJSON.Feature<GeoJSON.Polygon> | null) => void;
+  mapStyle?: string; // e.g. mapbox://styles/mapbox/streets-v12
 };
 
 const UAE_CENTER: [number, number] = [54.5, 24.2];
@@ -26,7 +27,7 @@ function buildZonesFeatureCollection() {
   } satisfies GeoJSON.FeatureCollection<GeoJSON.Polygon>;
 }
 
-const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea }) => {
+const RealEstateMap: React.FC<RealEstateMapProps> = ({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, mapStyle }) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
@@ -45,7 +46,7 @@ useEffect(() => {
 
       map = new mapboxgl.Map({
         container: container.current,
-        style: "mapbox://styles/mapbox/light-v11",
+        style: mapStyle || "mapbox://styles/mapbox/streets-v12",
         center: UAE_CENTER,
         zoom: 6,
         pitch: 55,
@@ -316,6 +317,12 @@ useEffect(() => {
     if (map.getLayer('heatmap-price')) map.setLayoutProperty('heatmap-price', 'visibility', showPriceHeat ? 'visible' : 'none');
     if (map.getLayer('heatmap-yield')) map.setLayoutProperty('heatmap-yield', 'visibility', showYieldHeat ? 'visible' : 'none');
   }, [showPriceHeat, showYieldHeat]);
+
+  // Update base style when mapStyle changes
+  useEffect(() => {
+    const map = mapRef.current; if (!map || !mapStyle) return;
+    try { map.setStyle(mapStyle); } catch (e) { console.error('Failed to set style', e); }
+  }, [mapStyle]);
 
   // Search area highlight source
   useEffect(() => {

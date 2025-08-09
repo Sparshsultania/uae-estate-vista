@@ -34,6 +34,7 @@ const Index: React.FC = () => {
   const [token, setToken] = useState<string>(() => localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || "");
   const [showTokenPanel, setShowTokenPanel] = useState<boolean>(() => !localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
   const [dataSource, setDataSource] = useState<'all' | 'title-deed' | 'oqoo' | 'dewa'>('all');
+  const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/streets-v12');
   const { toast } = useToast();
 
   const handleSelect = (p: PropertyPoint) => {
@@ -112,6 +113,20 @@ const Index: React.FC = () => {
                 <option value="dewa">DEWA</option>
               </select>
             </div>
+            <div className="flex items-center gap-2 ml-4">
+              <label className="text-sm font-medium">Map style:</label>
+              <select
+                value={mapStyle}
+                onChange={(e) => setMapStyle(e.target.value)}
+                className="px-3 py-1 text-sm border rounded-md bg-background"
+              >
+                <option value="mapbox://styles/mapbox/streets-v12">Streets</option>
+                <option value="mapbox://styles/mapbox/outdoors-v12">Outdoors</option>
+                <option value="mapbox://styles/mapbox/light-v11">Light</option>
+                <option value="mapbox://styles/mapbox/dark-v11">Dark</option>
+                <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite</option>
+              </select>
+            </div>
           </div>
           <div className="pt-2">
             <IdentifierBar onSubmit={handleIdentifierSubmit} />
@@ -122,7 +137,7 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <RealEstateMap token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} />
+            <RealEstateMap token={token} selected={selected} onSelect={handleSelect} showPriceHeat={showPriceHeat} showYieldHeat={showYieldHeat} searchArea={searchArea} mapStyle={mapStyle} />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
                 <Card className="p-4 glass-panel animate-enter">
