@@ -143,14 +143,15 @@ const Index: React.FC = () => {
               <Button size="sm" onClick={() => mapRef.current?.startDrawPolygon()}>Draw area</Button>
               <Button size="sm" variant="secondary" onClick={() => mapRef.current?.clearDraw()}>Clear</Button>
               <Separator orientation="vertical" className="h-6" />
-              <Button size="sm" variant={enableNeighborhoodPicker ? 'default' : 'secondary'} onClick={() => setEnableNeighborhoodPicker((v) => !v)}>
-                {enableNeighborhoodPicker ? 'Picking…' : 'Pick neighborhoods'}
-              </Button>
-              {selectedNeighborhoods.length > 0 && (
-                <Button size="sm" variant="ghost" onClick={() => setSelectedNeighborhoods([])}>
-                  Clear neighborhoods ({selectedNeighborhoods.length})
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <Switch id="toggle-boundaries" checked={enableNeighborhoodPicker} onCheckedChange={setEnableNeighborhoodPicker} />
+                <label htmlFor="toggle-boundaries" className="text-sm">Boundaries</label>
+                {selectedNeighborhoods.length > 0 && (
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedNeighborhoods([])}>
+                    Clear neighborhoods ({selectedNeighborhoods.length})
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           <div className="pt-2">
