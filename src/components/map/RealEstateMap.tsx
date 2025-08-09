@@ -445,14 +445,14 @@ useEffect(() => {
 
   // Update overlays visibility
   useEffect(() => {
-    const map = mapRef.current; if (!map || !map.getStyle()) return;
+    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
     if (map.getLayer('heatmap-price')) map.setLayoutProperty('heatmap-price', 'visibility', showPriceHeat ? 'visible' : 'none');
     if (map.getLayer('heatmap-yield')) map.setLayoutProperty('heatmap-yield', 'visibility', showYieldHeat ? 'visible' : 'none');
   }, [showPriceHeat, showYieldHeat]);
 
   // Ensure 3D buildings are visible unless isochrones or directions are enabled
   useEffect(() => {
-    const map = mapRef.current; if (!map || !map.getStyle()) return;
+    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
     const show3d = !(isochrone?.enabled || directionsEnabled);
     if (map.getLayer('3d-buildings')) {
       map.setLayoutProperty('3d-buildings', 'visibility', show3d ? 'visible' : 'none');
@@ -461,7 +461,7 @@ useEffect(() => {
 
   // Isochrone rendering
   useEffect(() => {
-    const map = mapRef.current; if (!map || !map.getStyle()) return;
+    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
     const cfg = isochrone || {};
     if (!cfg.enabled) {
       if (map.getLayer('isochrone-fill')) map.removeLayer('isochrone-fill');
@@ -522,7 +522,7 @@ useEffect(() => {
     const removeFallback = () => {
       if (!map) return;
       // If style is gone (during setStyle or after map.remove), skip cleanup that touches style
-      const hasStyle = !!map.getStyle?.();
+      let hasStyle = false; try { hasStyle = map.isStyleLoaded(); } catch { hasStyle = false; }
       if (routeClickHandlerRef.current) {
         // @ts-ignore
         map.off('click', routeClickHandlerRef.current);
@@ -612,7 +612,7 @@ useEffect(() => {
 
   // Search area highlight source
   useEffect(() => {
-    const map = mapRef.current; if (!map || !map.getStyle()) return;
+    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
     const sourceId = 'search-area';
     if (searchArea) {
       if (map.getSource(sourceId)) {
