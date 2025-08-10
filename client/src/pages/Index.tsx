@@ -211,9 +211,21 @@ const Index: React.FC = () => {
         </div>
       </header>
 
-      <section className="container grid grid-cols-1 lg:grid-cols-12 gap-6 py-6 min-h-[85vh]">
-        <article className="lg:col-span-8 xl:col-span-9">
-          <div className="relative rounded-lg border bg-muted/50 overflow-hidden h-[70vh] lg:h-[85vh]">
+      <section className="container py-6 space-y-6">
+        {/* Valuation Form - Full width above map */}
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-semibold">Property Valuation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ValuationForm token={token} onPlaceSelect={handlePlaceSelect} />
+          </CardContent>
+        </Card>
+
+        {/* Map and Sidebar Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[85vh]">
+          <article className="lg:col-span-8 xl:col-span-9">
+            <div className="relative rounded-lg border bg-muted/50 overflow-hidden h-[70vh] lg:h-[85vh]">
             <RealEstateMap
               ref={mapRef}
               token={token}
@@ -224,7 +236,7 @@ const Index: React.FC = () => {
               searchArea={searchArea}
               onAreaChange={setSearchArea}
               mapStyle={mapStyle}
-              flyTo={flyTo}
+              flyTo={flyTo || undefined}
               directionsEnabled={directionsEnabled}
               amenities={amenitiesSB.results}
               onPOISelect={handlePOISelect}
@@ -255,17 +267,9 @@ const Index: React.FC = () => {
               </div>
             )}
           </div>
-        </article>
-        
-        <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold">Property Valuation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ValuationForm token={token} onPlaceSelect={handlePlaceSelect} />
-            </CardContent>
-          </Card>
+          </article>
+          
+          <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
           {selectedPropertyDetails ? (
             <div className="space-y-4">
               <Card>
@@ -383,7 +387,8 @@ const Index: React.FC = () => {
               <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
             </>
           )}
-        </aside>
+          </aside>
+        </div>
       </section>
 
       <footer className="border-t">
