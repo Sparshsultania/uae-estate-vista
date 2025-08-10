@@ -886,18 +886,22 @@ useEffect(() => {
 
   // Fly when requested (e.g., geocode selection)  
   const lastFlyToTimestamp = useRef<number>(0);
+  const flyToInProgress = useRef<boolean>(false);
   
   useEffect(() => {
     const map = mapRef.current; 
-    if (!map || !flyTo) return;
+    if (!map || !flyTo || flyToInProgress.current) return;
     
     // Only fly if this is a new flyTo request
     const currentTimestamp = flyTo.timestamp || 0;
     if (currentTimestamp <= lastFlyToTimestamp.current) return;
     
     lastFlyToTimestamp.current = currentTimestamp;
+    flyToInProgress.current = true;
     
     try {
+      console.log('Flying to:', flyTo.center, 'with timestamp:', currentTimestamp);
+      
       map.flyTo({ 
         center: flyTo.center, 
         zoom: flyTo.zoom ?? 13, 
@@ -905,8 +909,16 @@ useEffect(() => {
         curve: 1.2, 
         essential: false // Allow user to interrupt
       });
+      
+      // Reset progress flag after animation
+      setTimeout(() => {
+        flyToInProgress.current = false;
+        console.log('FlyTo completed, user can now interact freely');
+      }, 3000); // Give extra time for flyTo to complete
+      
     } catch (e) { 
       console.error('flyTo failed', e); 
+      flyToInProgress.current = false;
     }
   }, [flyTo]);
 

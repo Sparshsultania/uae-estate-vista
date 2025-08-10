@@ -72,11 +72,11 @@ const Index: React.FC = () => {
   };
 
 
-  const handlePlaceSelect = (pl: { center: [number, number]; bbox?: [number, number, number, number]; name: string }) => {
+  const handlePlaceSelect = (pl: { center: [number, number]; bbox?: [number, number, number, number]; name: string; timestamp?: number }) => {
     setSelected(null);
     setSearchArea(circlePolygon(pl.center, 1500));
-    // Use a unique timestamp to prevent re-triggering
-    setFlyTo({ center: pl.center, zoom: 13, timestamp: Date.now() });
+    // Use the provided timestamp, or generate one if not provided
+    setFlyTo({ center: pl.center, zoom: 13, timestamp: pl.timestamp || Date.now() });
   };
 
   const handleRouteTo = (dest: [number, number], profile: 'driving'|'walking'|'cycling' = 'driving') => {
