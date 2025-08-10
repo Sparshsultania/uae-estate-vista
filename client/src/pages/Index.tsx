@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import AmenityFilters, { type AmenityCategory, ALL_AMENITY_CATEGORIES } from "@/components/controls/AmenityFilters";
 import { useSearchBoxAmenities } from "@/hooks/useSearchBoxAmenities";
 import POIDetailsPanel, { type POIDetails } from "@/components/panels/POIDetailsPanel";
+import PropertyDetailsPanel, { type PropertyData } from "@/components/panels/PropertyDetailsPanel";
 import usePOIData from "@/hooks/usePOIData";
 
 function circlePolygon(center: [number, number], radiusMeters: number, points = 64): GeoJSON.Feature<GeoJSON.Polygon> {
@@ -64,15 +65,58 @@ const Index: React.FC = () => {
   const [selectedPOI, setSelectedPOI] = useState<POIDetails | null>(null);
   const { fetchPOIDetails, isLoading: poiLoading } = usePOIData(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '');
 
+  // Property details panel state
+  const [selectedPropertyDetails, setSelectedPropertyDetails] = useState<PropertyData | null>(null);
+
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
     setSearchArea(circlePolygon(p.coords, 1200));
     // Use a unique timestamp to prevent re-triggering
     setFlyTo({ center: p.coords, zoom: 16, timestamp: Date.now() });
+    
+    // Convert PropertyPoint to PropertyData for the detailed panel
+    const propertyData: PropertyData = {
+      id: p.id.toString(),
+      name: p.name,
+      address: p.name, // Use name as address since PropertyPoint doesn't have address field
+      location: p.name,
+      coordinates: p.coords,
+      value: Math.floor(Math.random() * 2000000) + 800000, // Generate realistic property value
+      pricePerSqFt: Math.floor(Math.random() * 800) + 600, // 600-1400 AED/sqft
+      yield: Math.round((Math.random() * 4 + 5) * 10) / 10, // 5-9% yield
+      score: Math.floor(Math.random() * 30) + 70, // 70-100 score
+      propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
+      bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
+      size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
+      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
+      imageUrl: `https://picsum.photos/400/200?random=${p.id}` // Random property image
+    };
+    setSelectedPropertyDetails(propertyData);
   };
 
 
   const handlePlaceSelect = (pl: { center: [number, number]; bbox?: [number, number, number, number]; name: string; timestamp?: number }) => {
+    const timestamp = Date.now();
+    setFlyTo({ center: pl.center, zoom: 15, timestamp });
+    
+    // Create mock property data for searched locations
+    const propertyData: PropertyData = {
+      id: `search-${timestamp}`,
+      name: pl.name,
+      address: pl.name,
+      location: pl.name,
+      coordinates: pl.center,
+      value: Math.floor(Math.random() * 2000000) + 800000, // 800k - 2.8M AED
+      pricePerSqFt: Math.floor(Math.random() * 800) + 600, // 600-1400 AED/sqft
+      yield: Math.round((Math.random() * 4 + 5) * 10) / 10, // 5-9% yield
+      score: Math.floor(Math.random() * 30) + 70, // 70-100 score
+      propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
+      bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
+      size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
+      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
+      imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
+    };
+    setSelectedPropertyDetails(propertyData);
     setSelected(null);
     setSearchArea(circlePolygon(pl.center, 1500));
     // Use the provided timestamp, or generate one if not provided
@@ -325,6 +369,11 @@ const Index: React.FC = () => {
           Smart insights highlighting undervalued zones with emerald glow. Smooth zoom & hover-rise interactions.
         </div>
       </footer>
+      {/* Property Details Panel - Full-screen sidebar */}
+      <PropertyDetailsPanel 
+        property={selectedPropertyDetails}
+        onClose={() => setSelectedPropertyDetails(null)}
+      />
     </main>
   );
 };
