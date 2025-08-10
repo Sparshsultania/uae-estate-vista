@@ -257,8 +257,15 @@ const Index: React.FC = () => {
           </div>
         </article>
         
-        <aside className="lg:col-span-4 xl:col-span-3 space-y-3">
-          <ValuationForm token={token} onPlaceSelect={handlePlaceSelect} />
+        <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold">Property Valuation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ValuationForm token={token} onPlaceSelect={handlePlaceSelect} />
+            </CardContent>
+          </Card>
           {selectedPropertyDetails ? (
             <div className="space-y-4">
               <Card>
