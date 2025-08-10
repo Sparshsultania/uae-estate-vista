@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Map, Sparkles, Settings2, X, BarChart3, Building2, MapPin } from "lucide-react";
+import { Map, Sparkles, Settings2, X, BarChart3, Building2, MapPin, Car, Bike, PersonStanding } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AmenityFilters, { type AmenityCategory, ALL_AMENITY_CATEGORIES } from "@/components/controls/AmenityFilters";
 import { useSearchBoxAmenities } from "@/hooks/useSearchBoxAmenities";
@@ -300,13 +300,44 @@ const Index: React.FC = () => {
               />
               <label htmlFor="toggle-directions" className="text-sm cursor-pointer">Directions</label>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch 
-                id="toggle-isochrone" 
-                checked={isochroneSettings.enabled} 
-                onCheckedChange={handleIsochroneToggle} 
-              />
-              <label htmlFor="toggle-isochrone" className="text-sm cursor-pointer">Travel time zones</label>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="toggle-isochrone" 
+                  checked={isochroneSettings.enabled} 
+                  onCheckedChange={handleIsochroneToggle} 
+                />
+                <label htmlFor="toggle-isochrone" className="text-sm cursor-pointer">Travel time zones</label>
+              </div>
+              
+              {isochroneSettings.enabled && (
+                <div className="flex items-center gap-2 ml-2">
+                  <Button
+                    size="sm"
+                    variant={isochroneSettings.profile === 'driving' ? 'default' : 'outline'}
+                    onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'driving' }))}
+                    className="h-7 px-2"
+                  >
+                    <Car className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={isochroneSettings.profile === 'walking' ? 'default' : 'outline'}
+                    onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'walking' }))}
+                    className="h-7 px-2"
+                  >
+                    <PersonStanding className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={isochroneSettings.profile === 'cycling' ? 'default' : 'outline'}
+                    onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'cycling' }))}
+                    className="h-7 px-2"
+                  >
+                    <Bike className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
