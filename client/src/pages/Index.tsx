@@ -39,7 +39,7 @@ const Index: React.FC = () => {
   const [showTokenPanel, setShowTokenPanel] = useState<boolean>(() => !localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
   const [dataSource, setDataSource] = useState<'all' | 'title-deed' | 'oqoo' | 'dewa'>('all');
   const [mapStyle, setMapStyle] = useState<string>('mapbox://styles/mapbox/streets-v12');
-  const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom?: number } | null>(null);
+  const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom?: number; timestamp?: number } | null>(null);
   const { toast } = useToast();
 
   const mapRef = useRef<RealEstateMapHandle | null>(null);
@@ -67,18 +67,16 @@ const Index: React.FC = () => {
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
     setSearchArea(circlePolygon(p.coords, 1200));
-    setFlyTo({ center: p.coords, zoom: 16 });
-    // Clear flyTo after a short delay to prevent re-triggering
-    setTimeout(() => setFlyTo(null), 500);
+    // Use a unique timestamp to prevent re-triggering
+    setFlyTo({ center: p.coords, zoom: 16, timestamp: Date.now() });
   };
 
 
   const handlePlaceSelect = (pl: { center: [number, number]; bbox?: [number, number, number, number]; name: string }) => {
     setSelected(null);
     setSearchArea(circlePolygon(pl.center, 1500));
-    setFlyTo({ center: pl.center, zoom: 13 });
-    // Clear flyTo after a short delay to prevent re-triggering
-    setTimeout(() => setFlyTo(null), 500);
+    // Use a unique timestamp to prevent re-triggering
+    setFlyTo({ center: pl.center, zoom: 13, timestamp: Date.now() });
   };
 
   const handleRouteTo = (dest: [number, number], profile: 'driving'|'walking'|'cycling' = 'driving') => {

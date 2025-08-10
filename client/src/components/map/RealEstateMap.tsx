@@ -884,9 +884,19 @@ useEffect(() => {
     }
   }, [searchArea]);
 
-  // Fly when requested (e.g., geocode selection)
+  // Fly when requested (e.g., geocode selection)  
+  const lastFlyToTimestamp = useRef<number>(0);
+  
   useEffect(() => {
-    const map = mapRef.current; if (!map || !flyTo) return;
+    const map = mapRef.current; 
+    if (!map || !flyTo) return;
+    
+    // Only fly if this is a new flyTo request
+    const currentTimestamp = flyTo.timestamp || 0;
+    if (currentTimestamp <= lastFlyToTimestamp.current) return;
+    
+    lastFlyToTimestamp.current = currentTimestamp;
+    
     try {
       map.flyTo({ 
         center: flyTo.center, 
