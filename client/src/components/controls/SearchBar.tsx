@@ -8,7 +8,7 @@ type Props = {
   items: PropertyPoint[];
   onSelect: (p: PropertyPoint) => void;
   token?: string;
-  onPlaceSelect?: (p: { center: [number, number]; bbox?: [number, number, number, number]; name: string }) => void;
+  onPlaceSelect?: (p: { center: [number, number]; bbox?: [number, number, number, number]; name: string; timestamp?: number }) => void;
 };
 
 const SearchBar: React.FC<Props> = ({ items, onSelect, token, onPlaceSelect }) => {
@@ -53,7 +53,7 @@ const SearchBar: React.FC<Props> = ({ items, onSelect, token, onPlaceSelect }) =
   };
 
   const selectPlace = (pl: any) => {
-    onPlaceSelect?.({ center: pl.center as [number, number], bbox: pl.bbox as any, name: pl.place_name as string });
+    onPlaceSelect?.({ center: pl.center as [number, number], bbox: pl.bbox as any, name: pl.place_name as string, timestamp: Date.now() });
     setQ(pl.place_name);
     setFocused(false);
   };

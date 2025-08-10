@@ -19,7 +19,7 @@ export type ValuationFormValues = {
 
 type Props = {
   token?: string;
-  onPlaceSelect?: (p: { center: [number, number]; bbox?: [number, number, number, number]; name: string }) => void;
+  onPlaceSelect?: (p: { center: [number, number]; bbox?: [number, number, number, number]; name: string; timestamp?: number }) => void;
   onCalculate?: (values: ValuationFormValues) => void;
 };
 
@@ -31,8 +31,33 @@ const ValuationForm: React.FC<Props> = ({ token, onPlaceSelect, onCalculate }) =
   const [size, setSize] = React.useState<string>("");
   const [sizeUnit, setSizeUnit] = React.useState<'sqft' | 'sqm'>("sqft");
 
-  // Disabled auto-geocoding to prevent map jumping while typing
-  // Users can use the main SearchBar for location search instead
+  // Smart geocoding: flies to location when you finish typing (with better debouncing)
+  React.useEffect(() => {
+    const q = building.trim();
+    const tk = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
+    if (!q || q.length < 4 || !tk) return; // Require at least 4 characters
+    
+    const t = setTimeout(async () => {
+      try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${tk}&autocomplete=true&limit=1&country=AE&types=place,locality,neighborhood,address,poi`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const f = Array.isArray(data?.features) && data.features[0];
+        if (f && onPlaceSelect) {
+          // Add timestamp to prevent re-triggering
+          onPlaceSelect({ 
+            center: f.center as [number, number], 
+            bbox: f.bbox as any, 
+            name: f.place_name as string,
+            timestamp: Date.now()
+          });
+        }
+      } catch (e) {
+        console.warn('Geocoding failed', e);
+      }
+    }, 1500); // Longer delay - only trigger when user stops typing
+    return () => clearTimeout(t);
+  }, [building, token, onPlaceSelect]);
 
   const handleCalc = (e: React.FormEvent) => {
     e.preventDefault();
