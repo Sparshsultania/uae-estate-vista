@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import SafeMap, { type RealEstateMapHandle } from "@/components/map/SafeMap";
+import RealEstateMap, { type RealEstateMapHandle } from "@/components/map/RealEstateMap";
 import SearchBar from "@/components/controls/SearchBar";
 import ValuationForm from "@/components/controls/ValuationForm";
 import StatsPanel from "@/components/panels/StatsPanel";
@@ -263,11 +263,20 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <SafeMap
+            <RealEstateMap
               ref={mapRef}
               token={token}
+              selected={selected}
+              onSelect={handleSelect}
+              showPriceHeat={showPriceHeat}
+              showYieldHeat={showYieldHeat}
+              searchArea={searchArea}
+              onAreaChange={setSearchArea}
               mapStyle={mapStyle}
               flyTo={flyTo || undefined}
+              isochrone={{ enabled: isoEnabled, profile: isoProfile, minutes: isoMinutes }}
+              directionsEnabled={directionsEnabled}
+              amenities={amenitiesSB.results}
               onPOISelect={handlePOISelect}
             />
             

@@ -888,34 +888,12 @@ useEffect(() => {
   useEffect(() => {
     const map = mapRef.current; if (!map || !flyTo) return;
     try {
-      // Ensure all map interactions remain enabled during and after flyTo
-      map.scrollZoom.enable();
-      map.dragPan.enable();
-      map.dragRotate.enable();
-      map.keyboard.enable();
-      map.doubleClickZoom.enable();
-      map.touchZoomRotate.enable();
-      
       map.flyTo({ 
         center: flyTo.center, 
         zoom: flyTo.zoom ?? 13, 
-        speed: 1.2,
-        curve: 1.0,
+        speed: 0.9, 
+        curve: 1.2, 
         essential: false // Allow user to interrupt
-      });
-      
-      // Re-enable controls after animation completes
-      map.once('moveend', () => {
-        try {
-          map.scrollZoom.enable();
-          map.dragPan.enable();
-          map.dragRotate.enable();
-          map.keyboard.enable();
-          map.doubleClickZoom.enable();
-          map.touchZoomRotate.enable();
-        } catch (e) {
-          console.warn('Re-enable controls failed:', e);
-        }
       });
     } catch (e) { 
       console.error('flyTo failed', e); 
