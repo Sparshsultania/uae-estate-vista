@@ -439,57 +439,69 @@ useEffect(() => {
         // Pointer cursor when entering buildings
         map!.on('mouseenter', '3d-buildings', () => { map!.getCanvas().style.cursor = 'pointer'; });
 
-        // Enhanced click handler for buildings with POI integration
+        // Improved single building selection with marker
         map!.on('click', '3d-buildings', (e) => {
-          const pad = 35; // pixels around click
-          const bbox: [[number, number], [number, number]] = [
-            [e.point.x - pad, e.point.y - pad],
-            [e.point.x + pad, e.point.y + pad],
-          ];
-          const feats = map!.queryRenderedFeatures(bbox, { layers: ['3d-buildings'] });
-          
           // Clear previous selection
           selectedBuildingIds.current.forEach((pid) => {
             map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: pid }, { selected: false });
           });
           selectedBuildingIds.current.clear();
 
-          feats.forEach((ff) => {
-            const fid = ff.id as number | string | undefined;
-            if (fid == null) return;
-            selectedBuildingIds.current.add(fid);
-            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
-          });
+          // Get the primary clicked building (closest to click point)
+          const clickPoint = e.point;
+          const feats = map!.queryRenderedFeatures(clickPoint, { layers: ['3d-buildings'] });
+          
+          if (feats.length > 0) {
+            // Select only the first (topmost) building
+            const primaryBuilding = feats[0];
+            const fid = primaryBuilding.id as number | string | undefined;
+            
+            if (fid != null) {
+              selectedBuildingIds.current.add(fid);
+              map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
+            }
+          }
 
-          // Close any existing popups first
+          // Close any existing popups and markers
           const popups = document.getElementsByClassName('mapboxgl-popup');
           for (let i = 0; i < popups.length; i++) {
             popups[i].remove();
           }
 
-          // Trigger POI data fetch for the clicked location
-          const clickCoords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-          onPOISelect?.(clickCoords);
+          // Remove existing markers
+          document.querySelectorAll('.poi-marker').forEach(marker => marker.remove());
 
-          // Also select the nearest property within ~300m for property stats
-          const distMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-            const R = 6371000;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            return 2 * R * Math.asin(Math.sqrt(a));
-          };
-          const clickLng = e.lngLat.lng; const clickLat = e.lngLat.lat;
-          let nearest: typeof properties[number] | null = null; let min = Infinity;
-          for (const p of properties) {
-            const d = distMeters(clickLat, clickLng, p.coords[1], p.coords[0]);
-            if (d < min) { min = d; nearest = p; }
-          }
-          if (nearest && min <= 300) {
-            onSelect?.(nearest);
-          }
+          // Add marker at click location
+          const clickCoords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+          
+          // Create custom marker
+          const markerEl = document.createElement('div');
+          markerEl.className = 'poi-marker';
+          markerEl.style.cssText = `
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            animation: markerPulse 2s infinite;
+          `;
+          markerEl.innerHTML = '📍';
+
+          // Add marker to map
+          new mapboxgl.Marker(markerEl)
+            .setLngLat(clickCoords)
+            .addTo(map!);
+
+          // Trigger POI data fetch for the clicked location
+          onPOISelect?.(clickCoords);
         });
 
         map!.on('mouseenter', 'property-points', () => { map!.getCanvas().style.cursor = 'pointer'; });

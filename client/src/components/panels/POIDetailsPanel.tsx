@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Star, Phone, Globe, Clock, Navigation } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { MapPin, Star, Phone, Globe, Clock, Navigation, Building2, Car, ShoppingBag, Hospital, GraduationCap, CreditCard, Bus, Dumbbell, Coffee } from 'lucide-react';
+import { NearbyAmenity } from '@/hooks/useNearbyAmenities';
 
 export interface POIDetails {
   id: string;
@@ -28,12 +30,32 @@ export interface POIDetails {
 
 interface POIDetailsPanelProps {
   poi: POIDetails | null;
+  nearbyAmenities: NearbyAmenity[];
+  amenitiesLoading: boolean;
   onClose: () => void;
   onGetDirections?: (coordinates: [number, number]) => void;
 }
 
-const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, onClose, onGetDirections }) => {
+const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, nearbyAmenities, amenitiesLoading, onClose, onGetDirections }) => {
   if (!poi) return null;
+
+  const getAmenityIcon = (type: NearbyAmenity['amenityType']) => {
+    switch (type) {
+      case 'restaurant': return <Coffee className="w-4 h-4" />;
+      case 'shopping': return <ShoppingBag className="w-4 h-4" />;
+      case 'healthcare': return <Hospital className="w-4 h-4" />;
+      case 'education': return <GraduationCap className="w-4 h-4" />;
+      case 'finance': return <CreditCard className="w-4 h-4" />;
+      case 'transport': return <Bus className="w-4 h-4" />;
+      case 'entertainment': return <Dumbbell className="w-4 h-4" />;
+      default: return <MapPin className="w-4 h-4" />;
+    }
+  };
+
+  const formatDistance = (distance: number) => {
+    if (distance < 1000) return `${distance}m`;
+    return `${(distance / 1000).toFixed(1)}km`;
+  };
 
   const renderPriceLevel = (level?: number) => {
     if (!level) return null;
@@ -145,6 +167,40 @@ const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, onClose, onGetDi
             </div>
           </div>
         )}
+
+        {/* Nearby Amenities Section */}
+        <div>
+          <Separator className="my-3" />
+          <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Nearby Amenities
+          </h4>
+          
+          {amenitiesLoading ? (
+            <div className="text-xs text-muted-foreground">Loading nearby amenities...</div>
+          ) : nearbyAmenities.length > 0 ? (
+            <ScrollArea className="h-32">
+              <div className="space-y-2">
+                {nearbyAmenities.slice(0, 10).map((amenity) => (
+                  <div key={amenity.id} className="flex items-center justify-between p-2 rounded-md border bg-card">
+                    <div className="flex items-center gap-2">
+                      {getAmenityIcon(amenity.amenityType)}
+                      <div>
+                        <div className="text-xs font-medium">{amenity.name}</div>
+                        <div className="text-xs text-muted-foreground">{amenity.category}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDistance(amenity.distance)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="text-xs text-muted-foreground">No nearby amenities found</div>
+          )}
+        </div>
 
         {poi.reviews && poi.reviews.length > 0 && (
           <div>
