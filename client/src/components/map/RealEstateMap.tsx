@@ -241,19 +241,118 @@ useEffect(() => {
           try { map!.removeLayer('3d-buildings'); } catch {}
         }
 
+        // Add landmark buildings first (famous Dubai landmarks with enhanced styling)
+        map!.addLayer(
+          {
+            id: '3d-landmarks',
+            source: 'composite',
+            'source-layer': 'building',
+            filter: [
+              'all',
+              ['==', ['geometry-type'], 'Polygon'],
+              ['in', ['get', 'name'], ['literal', [
+                'Burj Khalifa',
+                'Emirates Towers', 'Emirates Tower One', 'Emirates Tower Two',
+                'Burj Al Arab', 'Burj Al Arab Jumeirah',
+                'Dubai Frame',
+                'Atlantis The Palm',
+                'Jumeirah Beach Hotel',
+                'Rose Tower', 'Rose Rayhaan by Rotana',
+                'Four Points by Sheraton Sheikh Zayed Road',
+                'JW Marriott Marquis Dubai',
+                'Address Downtown',
+                'The Address Dubai Mall',
+                'Gevora Hotel',
+                'Cayan Tower',
+                'Marina 101',
+                'Princess Tower',
+                '23 Marina',
+                'Elite Residence'
+              ]]]
+            ],
+            type: 'fill-extrusion',
+            minzoom: 8,
+            paint: {
+              'fill-extrusion-color': [
+                'case',
+                // Burj Khalifa - Gold
+                ['==', ['get', 'name'], 'Burj Khalifa'], 'hsl(45,100%,65%)',
+                // Emirates Towers - Blue
+                ['in', ['get', 'name'], ['literal', ['Emirates Towers', 'Emirates Tower One', 'Emirates Tower Two']]], 'hsl(200,80%,60%)',
+                // Burj Al Arab - Red/Pink
+                ['in', ['get', 'name'], ['literal', ['Burj Al Arab', 'Burj Al Arab Jumeirah']]], 'hsl(350,90%,70%)',
+                // Dubai Frame - Bronze
+                ['==', ['get', 'name'], 'Dubai Frame'], 'hsl(30,85%,60%)',
+                // Other landmarks - Special colors
+                ['boolean', ['feature-state', 'selected'], false], '#8B5CF6',
+                ['boolean', ['feature-state', 'hover'], false], 'hsl(280, 65%, 65%)',
+                'hsl(280, 40%, 70%)'
+              ],
+              'fill-extrusion-height': [
+                'case',
+                // Famous landmarks with actual heights
+                ['==', ['get', 'name'], 'Burj Khalifa'], 828,
+                ['in', ['get', 'name'], ['literal', ['Emirates Towers', 'Emirates Tower One']]], 355,
+                ['==', ['get', 'name'], 'Emirates Tower Two'], 309,
+                ['in', ['get', 'name'], ['literal', ['Burj Al Arab', 'Burj Al Arab Jumeirah']]], 321,
+                ['==', ['get', 'name'], 'Dubai Frame'], 150,
+                ['==', ['get', 'name'], 'Gevora Hotel'], 356,
+                ['==', ['get', 'name'], 'JW Marriott Marquis Dubai'], 355,
+                ['==', ['get', 'name'], 'Rose Tower'], 333,
+                ['==', ['get', 'name'], 'Princess Tower'], 414,
+                ['==', ['get', 'name'], 'Marina 101'], 427,
+                ['==', ['get', 'name'], 'Cayan Tower'], 306,
+                ['==', ['get', 'name'], '23 Marina'], 392,
+                ['==', ['get', 'name'], 'Elite Residence'], 380,
+                // Selected/hover states
+                ['boolean', ['feature-state', 'selected'], false],
+                ['*', ['coalesce', ['get', 'height'], 50], 1.3],
+                ['boolean', ['feature-state', 'hover'], false],
+                ['*', ['coalesce', ['get', 'height'], 50], 1.15],
+                ['coalesce', ['get', 'height'], 50]
+              ],
+              'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+              'fill-extrusion-opacity': 0.95,
+            }
+          },
+          labelLayerId ? labelLayerId : undefined
+        );
+
+        // Regular 3D buildings (non-landmarks)
         map!.addLayer(
           {
             id: '3d-buildings',
             source: 'composite',
             'source-layer': 'building',
-            // Render 3D for polygon footprints even without explicit height
-            filter: ['==', ['geometry-type'], 'Polygon'],
+            filter: [
+              'all',
+              ['==', ['geometry-type'], 'Polygon'],
+              ['!in', ['get', 'name'], ['literal', [
+                'Burj Khalifa',
+                'Emirates Towers', 'Emirates Tower One', 'Emirates Tower Two',
+                'Burj Al Arab', 'Burj Al Arab Jumeirah',
+                'Dubai Frame',
+                'Atlantis The Palm',
+                'Jumeirah Beach Hotel',
+                'Rose Tower', 'Rose Rayhaan by Rotana',
+                'Four Points by Sheraton Sheikh Zayed Road',
+                'JW Marriott Marquis Dubai',
+                'Address Downtown',
+                'The Address Dubai Mall',
+                'Gevora Hotel',
+                'Cayan Tower',
+                'Marina 101',
+                'Princess Tower',
+                '23 Marina',
+                'Elite Residence'
+              ]]]
+            ],
             type: 'fill-extrusion',
-            minzoom: 12,
+            minzoom: 14,
             paint: {
               'fill-extrusion-color': [
                 'case',
-                ['boolean', ['feature-state', 'selected'], false], '#8B5CF6', // Purple color like in reference image
+                ['boolean', ['feature-state', 'selected'], false], '#8B5CF6',
                 ['boolean', ['feature-state', 'hover'], false], 'hsl(182, 65%, 55%)',
                 'hsl(210, 10%, 80%)'
               ],
@@ -266,7 +365,7 @@ useEffect(() => {
                 ['coalesce', ['get', 'height'], 20]
               ],
               'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
-              'fill-extrusion-opacity': 0.9,
+              'fill-extrusion-opacity': 0.75,
             }
           },
           labelLayerId ? labelLayerId : undefined
@@ -274,8 +373,10 @@ useEffect(() => {
         // Respect current toggles immediately
         if (isochrone?.enabled || directionsEnabled) {
           map!.setLayoutProperty('3d-buildings', 'visibility', 'none');
+          map!.setLayoutProperty('3d-landmarks', 'visibility', 'none');
         } else {
           map!.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+          map!.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
         }
 
         // Properties point source & layers
@@ -412,7 +513,32 @@ useEffect(() => {
 
         // Neighborhoods feature removed
 
-        // Interactions
+        // Interactions for landmarks
+        map!.on('mousemove', '3d-landmarks', (e) => {
+          if (hoverRaf.current) cancelAnimationFrame(hoverRaf.current);
+          hoverRaf.current = requestAnimationFrame(() => {
+            if (!e.features?.length) return;
+            const f = e.features[0];
+            const id = f.id as number | string | undefined;
+            if (id == null) return;
+            if (hoveredBuildingId.current !== null && hoveredBuildingId.current !== id) {
+              map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: hoveredBuildingId.current }, { hover: false });
+            }
+            hoveredBuildingId.current = id;
+            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id }, { hover: true });
+          });
+        });
+        map!.on('mouseleave', '3d-landmarks', () => {
+          if (hoverRaf.current) cancelAnimationFrame(hoverRaf.current);
+          if (hoveredBuildingId.current !== null) {
+            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: hoveredBuildingId.current }, { hover: false });
+          }
+          hoveredBuildingId.current = null;
+          map!.getCanvas().style.cursor = '';
+        });
+        map!.on('mouseenter', '3d-landmarks', () => { map!.getCanvas().style.cursor = 'pointer'; });
+
+        // Interactions for regular buildings
         map!.on('mousemove', '3d-buildings', (e) => {
           if (hoverRaf.current) cancelAnimationFrame(hoverRaf.current);
           hoverRaf.current = requestAnimationFrame(() => {
@@ -435,11 +561,166 @@ useEffect(() => {
           hoveredBuildingId.current = null;
           map!.getCanvas().style.cursor = '';
         });
-
-        // Pointer cursor when entering buildings
         map!.on('mouseenter', '3d-buildings', () => { map!.getCanvas().style.cursor = 'pointer'; });
 
-        // Enhanced click handler for buildings with POI integration - single building selection
+        // Enhanced click handler for landmarks with POI integration
+        map!.on('click', '3d-landmarks', (e) => {
+          const feats = map!.queryRenderedFeatures(e.point, { layers: ['3d-landmarks', '3d-buildings'] });
+          
+          // Clear previous selection and marker
+          selectedBuildingIds.current.forEach((pid) => {
+            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: pid }, { selected: false });
+          });
+          selectedBuildingIds.current.clear();
+          
+          // Remove previous building marker
+          if (map!.getSource('building-marker')) {
+            if (map!.getLayer('building-marker-icon')) map!.removeLayer('building-marker-icon');
+            if (map!.getLayer('building-marker-inner')) map!.removeLayer('building-marker-inner');
+            map!.removeSource('building-marker');
+          }
+
+          if (feats.length > 0) {
+            const closestFeature = feats[0]; // Landmarks take priority
+            const fid = closestFeature.id as number | string | undefined;
+            if (fid != null) {
+              selectedBuildingIds.current.add(fid);
+              map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
+              console.log('Selected landmark building:', closestFeature.properties?.name || `Building ${fid}`);
+              
+              // Handle the same building selection logic...
+              const buildingGeometry = closestFeature.geometry;
+              if (buildingGeometry && (buildingGeometry.type === 'Polygon' || buildingGeometry.type === 'MultiPolygon')) {
+                let coords: number[][];
+                if (buildingGeometry.type === 'Polygon') {
+                  coords = buildingGeometry.coordinates[0];
+                } else {
+                  coords = buildingGeometry.coordinates[0][0];
+                }
+                
+                const centroid = coords.reduce((acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]], [0, 0]);
+                centroid[0] /= coords.length;
+                centroid[1] /= coords.length;
+                
+                // Same property point creation and geocoding logic...
+                if (onSelect) {
+                  const tempPropertyPoint: PropertyPoint = {
+                    id: fid.toString(),
+                    coords: [centroid[0], centroid[1]],
+                    name: `Loading...`,
+                    community: "Dubai",
+                    estimatedValueAED: Math.floor(Math.random() * 2000000) + 800000,
+                    pricePerSqft: Math.floor(Math.random() * 800) + 600,
+                    rentYield: Math.round((Math.random() * 4 + 5) * 10) / 10,
+                    investmentScore: Math.floor(Math.random() * 30) + 70,
+                    priceTrend: Array.from({ length: 12 }).map((_, i) => ({
+                      month: new Date(2024, i, 1).toLocaleString('en', { month: 'short' }),
+                      value: Math.floor(Math.random() * 1000) + 1500
+                    }))
+                  };
+                  
+                  onSelect(tempPropertyPoint);
+                  
+                  // Use the landmark name directly if available, otherwise geocode
+                  const landmarkName = closestFeature.properties?.name;
+                  if (landmarkName) {
+                    const updatedPropertyPoint: PropertyPoint = {
+                      ...tempPropertyPoint,
+                      name: landmarkName,
+                      community: "Dubai"
+                    };
+                    onSelect(updatedPropertyPoint);
+                  } else {
+                    // Fallback to geocoding for unnamed landmarks
+                    fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${centroid[0]},${centroid[1]}.json?access_token=${token}&types=poi,address`)
+                      .then(response => response.json())
+                      .then(data => {
+                        let buildingName = `Building ${fid}`;
+                        let community = "Dubai";
+                        
+                        if (data.features && data.features.length > 0) {
+                          const feature = data.features[0];
+                          if (feature.place_type?.includes('poi')) {
+                            buildingName = feature.text || feature.place_name || buildingName;
+                          } else if (feature.place_type?.includes('address')) {
+                            buildingName = feature.place_name || buildingName;
+                          }
+                          
+                          if (feature.context) {
+                            const neighborhood = feature.context.find((c: any) => c.id.startsWith('neighborhood'));
+                            const locality = feature.context.find((c: any) => c.id.startsWith('locality'));
+                            const district = feature.context.find((c: any) => c.id.startsWith('district'));
+                            community = neighborhood?.text || locality?.text || district?.text || "Dubai";
+                          }
+                        }
+                        
+                        const updatedPropertyPoint: PropertyPoint = {
+                          ...tempPropertyPoint,
+                          name: buildingName,
+                          community: community
+                        };
+                        onSelect(updatedPropertyPoint);
+                      })
+                      .catch(error => {
+                        console.error('Failed to geocode building location:', error);
+                        const fallbackPropertyPoint: PropertyPoint = {
+                          ...tempPropertyPoint,
+                          name: `Building ${fid}`,
+                        };
+                        onSelect(fallbackPropertyPoint);
+                      });
+                  }
+                }
+
+                // Add marker (same logic)
+                if (map!.getSource('building-marker')) {
+                  if (map!.getLayer('building-marker-icon')) map!.removeLayer('building-marker-icon');
+                  if (map!.getLayer('building-marker-inner')) map!.removeLayer('building-marker-inner');
+                  map!.removeSource('building-marker');
+                }
+                
+                map!.addSource('building-marker', {
+                  type: 'geojson',
+                  data: {
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: centroid },
+                    properties: {}
+                  }
+                });
+                
+                map!.addLayer({
+                  id: 'building-marker-icon',
+                  type: 'circle',
+                  source: 'building-marker',
+                  paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#8B5CF6',
+                    'circle-stroke-color': '#FFFFFF',
+                    'circle-stroke-width': 2,
+                    'circle-opacity': 1
+                  }
+                });
+                
+                map!.addLayer({
+                  id: 'building-marker-inner',
+                  type: 'circle',
+                  source: 'building-marker',
+                  paint: {
+                    'circle-radius': 4,
+                    'circle-color': '#FFFFFF',
+                    'circle-opacity': 1
+                  }
+                });
+              }
+            }
+          }
+
+          // Also handle POI selection for clicked location
+          const clickCoords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+          onPOISelect?.(clickCoords);
+        });
+
+        // Enhanced click handler for regular buildings with POI integration - single building selection
         map!.on('click', '3d-buildings', (e) => {
           const feats = map!.queryRenderedFeatures(e.point, { layers: ['3d-buildings'] });
           
