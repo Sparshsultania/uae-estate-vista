@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import SafeRealEstateMap, { type RealEstateMapHandle } from "@/components/map/SafeRealEstateMap";
+import RealEstateMap, { type RealEstateMapHandle } from "@/components/map/RealEstateMap";
 import SearchBar from "@/components/controls/SearchBar";
 import ValuationForm from "@/components/controls/ValuationForm";
 import StatsPanel from "@/components/panels/StatsPanel";
@@ -14,7 +14,6 @@ import AmenityFilters, { type AmenityCategory, ALL_AMENITY_CATEGORIES } from "@/
 import { useSearchBoxAmenities } from "@/hooks/useSearchBoxAmenities";
 import POIDetailsPanel, { type POIDetails } from "@/components/panels/POIDetailsPanel";
 import usePOIData from "@/hooks/usePOIData";
-import useNearbyAmenities from "@/hooks/useNearbyAmenities";
 
 function circlePolygon(center: [number, number], radiusMeters: number, points = 64): GeoJSON.Feature<GeoJSON.Polygon> {
   const [lng, lat] = center;
@@ -64,9 +63,6 @@ const Index: React.FC = () => {
   // POI state
   const [selectedPOI, setSelectedPOI] = useState<POIDetails | null>(null);
   const { fetchPOIDetails, isLoading: poiLoading } = usePOIData(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '');
-  
-  // Nearby amenities state
-  const { amenities: nearbyAmenities, fetchNearbyAmenities, isLoading: amenitiesLoading } = useNearbyAmenities(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '');
 
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
@@ -92,12 +88,7 @@ const Index: React.FC = () => {
 
   const handlePOISelect = async (coordinates: [number, number]) => {
     try {
-      // Fetch POI details and nearby amenities in parallel
-      const [poiDetails] = await Promise.all([
-        fetchPOIDetails(coordinates),
-        fetchNearbyAmenities(coordinates, 1000) // 1km radius
-      ]);
-      
+      const poiDetails = await fetchPOIDetails(coordinates);
       if (poiDetails) {
         setSelectedPOI(poiDetails);
       }
@@ -272,7 +263,7 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <SafeRealEstateMap
+            <RealEstateMap
               ref={mapRef}
               token={token}
               selected={selected}
@@ -292,8 +283,6 @@ const Index: React.FC = () => {
             {/* POI Details Panel Overlay */}
             <POIDetailsPanel 
               poi={selectedPOI}
-              nearbyAmenities={nearbyAmenities}
-              amenitiesLoading={amenitiesLoading}
               onClose={handlePOIClose}
               onGetDirections={handleGetDirections}
             />

@@ -44,29 +44,11 @@ function buildZonesFeatureCollection() {
 
 export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; routeTo: (dest: [number, number], profile?: 'driving'|'walking'|'cycling') => void; };
 
-// Safe map operation utilities
-const safeGetLayer = (map: mapboxgl.Map | null, layerId: string) => {
-  try {
-    return map?.isStyleLoaded?.() && map?.getLayer?.(layerId);
-  } catch {
-    return null;
-  }
-};
-
-const safeGetSource = (map: mapboxgl.Map | null, sourceId: string) => {
-  try {
-    return map?.isStyleLoaded?.() && map?.getSource?.(sourceId);
-  } catch {
-    return null;
-  }
-};
-
 const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled, amenities, onPOISelect }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
   const selectedBuildingIds = useRef<Set<number | string>>(new Set());
-  const mapInitialized = useRef<boolean>(false);
   const hoverRaf = useRef<number | null>(null);
   const drawRef = useRef<any | null>(null);
   const directionsCtlRef = useRef<any | null>(null);
@@ -164,12 +146,11 @@ useEffect(() => {
       // Force and ensure 3D perspective right after the map fully loads
       map.on('load', () => {
         try {
-          mapInitialized.current = true;
           if (map.getZoom() < 15) map.setZoom(15);
           map.setPitch(60);
           map.setBearing(45);
           // Add 3D buildings layer if it's not present yet
-          if (map.isStyleLoaded() && !map.getLayer('3d-buildings')) {
+          if (!map.getLayer('3d-buildings')) {
             const layers = map.getStyle().layers || [];
             const labelLayerId = layers.find((l) => l.type === 'symbol' && (l.layout as any)?.['text-field'])?.id;
             map.addLayer(
@@ -458,69 +439,57 @@ useEffect(() => {
         // Pointer cursor when entering buildings
         map!.on('mouseenter', '3d-buildings', () => { map!.getCanvas().style.cursor = 'pointer'; });
 
-        // Improved single building selection with marker
+        // Enhanced click handler for buildings with POI integration
         map!.on('click', '3d-buildings', (e) => {
+          const pad = 35; // pixels around click
+          const bbox: [[number, number], [number, number]] = [
+            [e.point.x - pad, e.point.y - pad],
+            [e.point.x + pad, e.point.y + pad],
+          ];
+          const feats = map!.queryRenderedFeatures(bbox, { layers: ['3d-buildings'] });
+          
           // Clear previous selection
           selectedBuildingIds.current.forEach((pid) => {
             map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: pid }, { selected: false });
           });
           selectedBuildingIds.current.clear();
 
-          // Get the primary clicked building (closest to click point)
-          const clickPoint = e.point;
-          const feats = map!.queryRenderedFeatures(clickPoint, { layers: ['3d-buildings'] });
-          
-          if (feats.length > 0) {
-            // Select only the first (topmost) building
-            const primaryBuilding = feats[0];
-            const fid = primaryBuilding.id as number | string | undefined;
-            
-            if (fid != null) {
-              selectedBuildingIds.current.add(fid);
-              map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
-            }
-          }
+          feats.forEach((ff) => {
+            const fid = ff.id as number | string | undefined;
+            if (fid == null) return;
+            selectedBuildingIds.current.add(fid);
+            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
+          });
 
-          // Close any existing popups and markers
+          // Close any existing popups first
           const popups = document.getElementsByClassName('mapboxgl-popup');
           for (let i = 0; i < popups.length; i++) {
             popups[i].remove();
           }
 
-          // Remove existing markers
-          document.querySelectorAll('.poi-marker').forEach(marker => marker.remove());
-
-          // Add marker at click location
-          const clickCoords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-          
-          // Create custom marker
-          const markerEl = document.createElement('div');
-          markerEl.className = 'poi-marker';
-          markerEl.style.cssText = `
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
-            cursor: pointer;
-            animation: markerPulse 2s infinite;
-          `;
-          markerEl.innerHTML = '📍';
-
-          // Add marker to map
-          new mapboxgl.Marker(markerEl)
-            .setLngLat(clickCoords)
-            .addTo(map!);
-
           // Trigger POI data fetch for the clicked location
+          const clickCoords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
           onPOISelect?.(clickCoords);
+
+          // Also select the nearest property within ~300m for property stats
+          const distMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return 2 * R * Math.asin(Math.sqrt(a));
+          };
+          const clickLng = e.lngLat.lng; const clickLat = e.lngLat.lat;
+          let nearest: typeof properties[number] | null = null; let min = Infinity;
+          for (const p of properties) {
+            const d = distMeters(clickLat, clickLng, p.coords[1], p.coords[0]);
+            if (d < min) { min = d; nearest = p; }
+          }
+          if (nearest && min <= 300) {
+            onSelect?.(nearest);
+          }
         });
 
         map!.on('mouseenter', 'property-points', () => { map!.getCanvas().style.cursor = 'pointer'; });
@@ -883,46 +852,35 @@ useEffect(() => {
     }
 
     return () => {
-      if (!map || !mapInitialized.current) return;
-      try {
-        if (safeGetLayer(map, symbolId)) map.removeLayer(symbolId);
-        if (safeGetLayer(map, bubbleId)) map.removeLayer(bubbleId);
-        if (safeGetSource(map, srcId)) map.removeSource(srcId);
-      } catch (error) {
-        console.warn('Error removing amenity layers:', error);
-      }
+      if (!map) return;
+      if (map.getLayer(symbolId)) try { map.removeLayer(symbolId); } catch {}
+      if (map.getLayer(bubbleId)) try { map.removeLayer(bubbleId); } catch {}
+      if (map.getSource(srcId)) try { map.removeSource(srcId); } catch {}
     };
   }, [JSON.stringify(amenities), mapStyle]);
 
   // Search area highlight source
   useEffect(() => {
-    const map = mapRef.current; 
-    if (!map || !mapInitialized.current || !map.isStyleLoaded()) return;
-    
+    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
     const sourceId = 'search-area';
-    
-    try {
-      if (searchArea) {
-        if (safeGetSource(map, sourceId)) {
-          (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(searchArea);
-        } else {
-          map.addSource(sourceId, { type: 'geojson', data: searchArea });
-          map.addLayer({
-            id: 'search-area-fill', type: 'fill', source: sourceId,
-            paint: { 'fill-color': 'hsl(182,65%,45%)', 'fill-opacity': 0.12 }
-          });
-          map.addLayer({
-            id: 'search-area-outline', type: 'line', source: sourceId,
-            paint: { 'line-color': 'hsl(182,65%,45%)', 'line-width': 2, 'line-blur': 2, 'line-opacity': 0.9 }
-          });
-        }
+    if (searchArea) {
+      if (map.getSource(sourceId)) {
+        (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(searchArea);
       } else {
-        if (safeGetLayer(map, 'search-area-fill')) map.removeLayer('search-area-fill');
-        if (safeGetLayer(map, 'search-area-outline')) map.removeLayer('search-area-outline');
-        if (safeGetSource(map, sourceId)) map.removeSource(sourceId);
+        map.addSource(sourceId, { type: 'geojson', data: searchArea });
+        map.addLayer({
+          id: 'search-area-fill', type: 'fill', source: sourceId,
+          paint: { 'fill-color': 'hsl(182,65%,45%)', 'fill-opacity': 0.12 }
+        });
+        map.addLayer({
+          id: 'search-area-outline', type: 'line', source: sourceId,
+          paint: { 'line-color': 'hsl(182,65%,45%)', 'line-width': 2, 'line-blur': 2, 'line-opacity': 0.9 }
+        });
       }
-    } catch (error) {
-      console.warn('Error managing search area layers:', error);
+    } else {
+      if (map.getLayer('search-area-fill')) map.removeLayer('search-area-fill');
+      if (map.getLayer('search-area-outline')) map.removeLayer('search-area-outline');
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
     }
   }, [searchArea]);
 
