@@ -44,37 +44,60 @@ const Index: React.FC = () => {
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom?: number; timestamp?: number } | null>(null);
   const { toast } = useToast();
 
-  // Directions and routing
+  const mapRef = useRef<RealEstateMapHandle | null>(null);
+  const [isoEnabled, setIsoEnabled] = useState(false);
+  const [isoProfile, setIsoProfile] = useState<'driving'|'walking'|'cycling'>('driving');
+  const [isoPreset, setIsoPreset] = useState<'10-20-30'|'5-10-15'|'15-30-45'>('10-20-30');
+  const isoMinutes = useMemo(() => {
+    switch (isoPreset) {
+      case '5-10-15': return [5,10,15];
+      case '15-30-45': return [15,30,45];
+      default: return [10,20,30];
+    }
+  }, [isoPreset]);
   const [directionsEnabled, setDirectionsEnabled] = useState(false);
+  // Amenity search state
+  const [amenityCats, setAmenityCats] = useState<AmenityCategory[]>(ALL_AMENITY_CATEGORIES);
+  const [amenityRadius, setAmenityRadius] = useState<number>(1000);
+  const selectedCenter = selected?.coords as [number, number] | undefined;
+  const amenitiesSB = useSearchBoxAmenities({ token, center: selectedCenter ?? null, route: null, categories: amenityCats, radiusMeters: amenityRadius, limitPerCategory: 12 });
 
-  // POI handling
+  // POI state
   const [selectedPOI, setSelectedPOI] = useState<POIDetails | null>(null);
-  const { fetchPOIDetails } = usePOIData();
+  const { fetchPOIDetails, isLoading: poiLoading } = usePOIData(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '');
 
-  // Property details state
+  // Property details panel state
   const [selectedPropertyDetails, setSelectedPropertyDetails] = useState<PropertyData | null>(null);
 
-  // Amenities and filters
-  const [amenityCats, setAmenityCats] = useState<AmenityCategory[]>([]);
-  const [amenityRadius, setAmenityRadius] = useState<number>(1500);
-  const amenitiesSB = useSearchBoxAmenities({
-    coordinates: selected ? selected.coords as [number, number] : null,
-    categories: amenityCats,
-    radius: amenityRadius,
-    token: token,
-  });
-
-  const mapRef = useRef<RealEstateMapHandle>(null);
-
-  const handleSelect = (property: PropertyPoint) => {
-    setSelected(property);
-    const timestamp = Date.now();
-    setFlyTo({ center: property.coords as [number, number], zoom: 16, timestamp });
+  const handleSelect = (p: PropertyPoint) => {
+    setSelected(p);
+    setSearchArea(circlePolygon(p.coords, 1200));
+    // Use a unique timestamp to prevent re-triggering
+    setFlyTo({ center: p.coords, zoom: 16, timestamp: Date.now() });
+    
+    // Convert PropertyPoint to PropertyData for the detailed panel
+    const propertyData: PropertyData = {
+      id: p.id.toString(),
+      name: p.name,
+      address: p.name, // Use name as address since PropertyPoint doesn't have address field
+      location: p.name,
+      coordinates: p.coords,
+      value: Math.floor(Math.random() * 2000000) + 800000, // Generate realistic property value
+      pricePerSqFt: Math.floor(Math.random() * 800) + 600, // 600-1400 AED/sqft
+      yield: Math.round((Math.random() * 4 + 5) * 10) / 10, // 5-9% yield
+      score: Math.floor(Math.random() * 30) + 70, // 70-100 score
+      propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
+      bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
+      size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
+      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
+      imageUrl: `https://picsum.photos/400/200?random=${p.id}` // Random property image
+    };
+    setSelectedPropertyDetails(propertyData);
   };
 
-  const handlePlaceSelect = (pl: { name: string; center: [number, number]; timestamp?: number }) => {
-    setSelected(null);
-    const timestamp = pl.timestamp || Date.now();
+
+  const handlePlaceSelect = (pl: { center: [number, number]; bbox?: [number, number, number, number]; name: string; timestamp?: number }) => {
+    const timestamp = Date.now();
     setFlyTo({ center: pl.center, zoom: 15, timestamp });
     
     // Create mock property data for searched locations
@@ -201,19 +224,92 @@ const Index: React.FC = () => {
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <Switch id="toggle-price" checked={showPriceHeat} onCheckedChange={setShowPriceHeat} />
-              <label htmlFor="toggle-price" className="text-sm cursor-pointer">Price heat</label>
+              <label htmlFor="toggle-price" className="text-sm">Price heatmap</label>
             </div>
             <div className="flex items-center gap-2">
               <Switch id="toggle-yield" checked={showYieldHeat} onCheckedChange={setShowYieldHeat} />
-              <label htmlFor="toggle-yield" className="text-sm cursor-pointer">Yield heat</label>
+              <label htmlFor="toggle-yield" className="text-sm">Yield heatmap</label>
             </div>
+            <div className="hidden md:flex items-center gap-2 ml-4">
+              <label className="text-sm font-medium">Data Source:</label>
+              <select 
+                value={dataSource} 
+                onChange={(e) => setDataSource(e.target.value as any)}
+                className="px-3 py-1 text-sm border rounded-md bg-background"
+              >
+                <option value="all">All Sources</option>
+                <option value="title-deed">Title Deed</option>
+                <option value="oqoo">OQOO</option>
+                <option value="dewa">DEWA</option>
+              </select>
+            </div>
+            <div className="hidden md:flex items-center gap-2 ml-4">
+              <label className="text-sm font-medium">Map style:</label>
+              <select
+                value={mapStyle}
+                onChange={(e) => setMapStyle(e.target.value)}
+                className="px-3 py-1 text-sm border rounded-md bg-background"
+              >
+                <option value="mapbox://styles/mapbox/streets-v12">Streets</option>
+                <option value="mapbox://styles/mapbox/outdoors-v12">Outdoors</option>
+                <option value="mapbox://styles/mapbox/light-v11">Light</option>
+                <option value="mapbox://styles/mapbox/dark-v11">Dark</option>
+                <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite</option>
+              </select>
+            </div>
+              <div className="flex items-center gap-2 ml-auto">
+                <Button size="sm" onClick={() => mapRef.current?.startDrawPolygon()}>Draw area</Button>
+                <Button size="sm" variant="secondary" onClick={() => mapRef.current?.clearDraw()}>Clear</Button>
+                <Separator orientation="vertical" className="h-6 hidden md:block" />
+                <div className="hidden md:flex items-center gap-2">
+                  <Switch id="toggle-iso" checked={isoEnabled} onCheckedChange={setIsoEnabled} />
+                  <label htmlFor="toggle-iso" className="text-sm">Isochrones</label>
+                  <select
+                    value={isoProfile}
+                    onChange={(e) => setIsoProfile(e.target.value as any)}
+                    className="px-2 py-1 text-xs border rounded-md bg-background"
+                    disabled={!isoEnabled}
+                  >
+                    <option value="driving">Driving</option>
+                    <option value="walking">Walking</option>
+                    <option value="cycling">Cycling</option>
+                  </select>
+                  <select
+                    value={isoPreset}
+                    onChange={(e) => setIsoPreset(e.target.value as any)}
+                    className="px-2 py-1 text-xs border rounded-md bg-background"
+                    disabled={!isoEnabled}
+                  >
+                    <option value="5-10-15">5 / 10 / 15 min</option>
+                    <option value="10-20-30">10 / 20 / 30 min</option>
+                    <option value="15-30-45">15 / 30 / 45 min</option>
+                  </select>
+                </div>
+                <Separator orientation="vertical" className="h-6 hidden md:block" />
+                 <div className="hidden md:flex items-center gap-2">
+                  <Switch id="toggle-dir" checked={directionsEnabled} onCheckedChange={setDirectionsEnabled} />
+                  <label htmlFor="toggle-dir" className="text-sm">Directions</label>
+                </div>
+              </div>
+          </div>
+          <div className="pt-2">
+            <ValuationForm
+              token={token}
+              onPlaceSelect={handlePlaceSelect}
+              onCalculate={(vals) => {
+                toast({
+                  title: 'Calculating…',
+                  description: `${vals.beds || 'Bedrooms'} • ${vals.size || '—'} ${vals.sizeUnit} • ${vals.unitNumber?.trim() ? vals.unitNumber : 'Unit'} in ${vals.building || 'selected area'}`,
+                });
+              }}
+            />
           </div>
         </div>
       </header>
 
-      <section className="container grid grid-cols-1 lg:grid-cols-12 gap-6 py-6 min-h-[85vh]">
-        <article className="lg:col-span-8 xl:col-span-9">
-          <div className="relative rounded-lg border bg-muted/50 overflow-hidden h-[70vh] lg:h-[85vh]">
+      <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
+          <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
             <RealEstateMap
               ref={mapRef}
               token={token}
@@ -224,7 +320,8 @@ const Index: React.FC = () => {
               searchArea={searchArea}
               onAreaChange={setSearchArea}
               mapStyle={mapStyle}
-              flyTo={flyTo}
+              flyTo={flyTo || undefined}
+              isochrone={{ enabled: isoEnabled, profile: isoProfile, minutes: isoMinutes }}
               directionsEnabled={directionsEnabled}
               amenities={amenitiesSB.results}
               onPOISelect={handlePOISelect}
@@ -256,10 +353,14 @@ const Index: React.FC = () => {
             )}
           </div>
         </article>
-        
         <aside className="lg:col-span-4 xl:col-span-3 space-y-3">
-          {selectedPropertyDetails ? (
-            <div className="space-y-4">
+          <AmenityFilters inline selected={amenityCats} onChange={setAmenityCats} radius={amenityRadius} onRadius={setAmenityRadius} />
+          {amenitiesSB.searchBoxSupported === false && (
+            <div className="rounded-md border p-3 text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+              Live amenities are using a fallback (Geocoding API). For richer, faster results, enable "Search Box API" scope on your Mapbox public token and add your site origin in the Mapbox dashboard.
+            </div>
+          )}
+          <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -368,10 +469,10 @@ const Index: React.FC = () => {
             <>
               <AmenityFilters inline selected={amenityCats} onChange={setAmenityCats} radius={amenityRadius} onRadius={setAmenityRadius} />
               {amenitiesSB.searchBoxSupported === false && (
-                <div className="rounded-md border p-3 text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
-                  Live amenities are using a fallback (Geocoding API). For richer, faster results, enable "Search Box API" scope on your Mapbox public token and add your site origin in the Mapbox dashboard.
-                </div>
-              )}
+            <div className="rounded-md border p-3 text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
+              Live amenities are using a fallback (Geocoding API). For richer, faster results, enable “Search Box API” scope on your Mapbox public token and add your site origin in the Mapbox dashboard.
+            </div>
+          )}
               <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
             </>
           )}
@@ -385,11 +486,6 @@ const Index: React.FC = () => {
         </div>
       </footer>
 
-      {/* Property Details Panel - Full-screen sidebar */}
-      <PropertyDetailsPanel 
-        property={selectedPropertyDetails}
-        onClose={() => setSelectedPropertyDetails(null)}
-      />
     </main>
   );
 };
