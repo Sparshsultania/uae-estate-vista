@@ -100,8 +100,9 @@ const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(
             ensureSource();
             (map.getSource('route') as mapboxgl.GeoJSONSource).setData({ type: 'Feature', geometry: geom, properties: {} } as any);
             map.flyTo({ center: dest, zoom: Math.max(map.getZoom(), 14), speed: 1.1, curve: 1.2 });
-            if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'none');
-            if (map.getLayer('3d-landmarks')) map.setLayoutProperty('3d-landmarks', 'visibility', 'none');
+            // Keep 3D buildings visible during routing - user preference
+            if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+            if (map.getLayer('3d-landmarks')) map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
           })
           .catch((e) => console.warn('routeTo fetch failed', e));
       } catch (e) {
@@ -983,12 +984,14 @@ useEffect(() => {
     if (map.getLayer('heatmap-yield')) map.setLayoutProperty('heatmap-yield', 'visibility', showYieldHeat ? 'visible' : 'none');
   }, [showPriceHeat, showYieldHeat]);
 
-  // Ensure 3D buildings are visible unless isochrones or directions are enabled
+  // Keep 3D buildings visible at all times - user wants them to stay on
   useEffect(() => {
     const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
-    const show3d = !(isochrone?.enabled || directionsEnabled);
     if (map.getLayer('3d-buildings')) {
-      map.setLayoutProperty('3d-buildings', 'visibility', show3d ? 'visible' : 'none');
+      map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+    }
+    if (map.getLayer('3d-landmarks')) {
+      map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
     }
   }, [isochrone?.enabled, directionsEnabled]);
 
@@ -1012,11 +1015,11 @@ useEffect(() => {
     
     if (!cfg.enabled) {
       cleanupIsochrones();
-      // Re-show 3D buildings when isochrone is disabled
-      if (map.getLayer('3d-buildings') && !directionsEnabled) {
+      // Always keep 3D buildings visible - user preference
+      if (map.getLayer('3d-buildings')) {
         map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
       }
-      if (map.getLayer('3d-landmarks') && !directionsEnabled) {
+      if (map.getLayer('3d-landmarks')) {
         map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
       }
       return;
@@ -1029,12 +1032,12 @@ useEffect(() => {
         return;
       }
       
-      // Hide 3D buildings when isochrones are enabled
+      // Keep 3D buildings visible even with isochrones - user preference
       if (map.getLayer('3d-buildings')) {
-        map.setLayoutProperty('3d-buildings', 'visibility', 'none');
+        map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
       }
       if (map.getLayer('3d-landmarks')) {
-        map.setLayoutProperty('3d-landmarks', 'visibility', 'none');
+        map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
       }
       
       const origin: [number, number] = selected?.coords || (map.getCenter().toArray() as [number, number]);
@@ -1050,10 +1053,25 @@ useEffect(() => {
       
       const url = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${origin[0]},${origin[1]}?contours_minutes=${contours}&polygons=true&denoise=1&access_token=${accessToken}`;
       
+      console.log('Fetching isochrone from:', url);
+      console.log('Origin coordinates:', origin);
+      console.log('Profile:', profile, 'Contours:', contours);
+      
       fetch(url)
-        .then((r) => r.json())
+        .then((r) => {
+          console.log('Isochrone response status:', r.status);
+          return r.json();
+        })
         .then((geo) => {
-          if (!geo || !geo.features || !map.isStyleLoaded()) return;
+          console.log('Isochrone data received:', geo);
+          if (!geo || !geo.features) {
+            console.warn('No isochrone features received');
+            return;
+          }
+          if (!map.isStyleLoaded()) {
+            console.warn('Map style not loaded, skipping isochrone rendering');
+            return;
+          }
           
           // Clean up existing first
           cleanupIsochrones();
@@ -1088,8 +1106,13 @@ useEffect(() => {
               'line-opacity': 0.8
             }
           });
+          
+          console.log('Isochrone layers added successfully');
         })
-        .catch((e) => console.warn('Isochrone fetch failed', e));
+        .catch((e) => {
+          console.error('Isochrone fetch failed:', e);
+          console.error('URL that failed:', url);
+        });
     };
     
     addIsochrones();
@@ -1120,9 +1143,9 @@ useEffect(() => {
 
     (async () => {
       if (directionsEnabled) {
-        // Hide 3D while routing for clarity
-        if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'none');
-        if (map.getLayer('3d-landmarks')) map.setLayoutProperty('3d-landmarks', 'visibility', 'none');
+        // Keep 3D buildings visible even during routing - user preference
+        if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+        if (map.getLayer('3d-landmarks')) map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
         try {
           // Some builds require global mapping
           ;(globalThis as any).mapboxgl = mapboxgl;
@@ -1167,11 +1190,11 @@ useEffect(() => {
           directionsCtlRef.current = null;
         }
         removeFallback();
-        // Re-show 3D if Isochrones isn't active
-        if (map.getLayer('3d-buildings') && !(isochrone?.enabled)) {
+        // Always keep 3D buildings visible - user preference
+        if (map.getLayer('3d-buildings')) {
           map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
         }
-        if (map.getLayer('3d-landmarks') && !(isochrone?.enabled)) {
+        if (map.getLayer('3d-landmarks')) {
           map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
         }
       }
