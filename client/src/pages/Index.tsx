@@ -311,31 +311,36 @@ const Index: React.FC = () => {
               </div>
               
               {isochroneSettings.enabled && (
-                <div className="flex items-center gap-2 ml-2">
-                  <Button
-                    size="sm"
-                    variant={isochroneSettings.profile === 'driving' ? 'default' : 'outline'}
-                    onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'driving' }))}
-                    className="h-7 px-2"
-                  >
-                    <Car className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={isochroneSettings.profile === 'walking' ? 'default' : 'outline'}
-                    onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'walking' }))}
-                    className="h-7 px-2"
-                  >
-                    <PersonStanding className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={isochroneSettings.profile === 'cycling' ? 'default' : 'outline'}
-                    onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'cycling' }))}
-                    className="h-7 px-2"
-                  >
-                    <Bike className="h-3 w-3" />
-                  </Button>
+                <div className="flex items-center gap-3 ml-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant={isochroneSettings.profile === 'driving' ? 'default' : 'outline'}
+                      onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'driving' }))}
+                      className="h-7 px-2"
+                    >
+                      <Car className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={isochroneSettings.profile === 'walking' ? 'default' : 'outline'}
+                      onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'walking' }))}
+                      className="h-7 px-2"
+                    >
+                      <PersonStanding className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={isochroneSettings.profile === 'cycling' ? 'default' : 'outline'}
+                      onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'cycling' }))}
+                      className="h-7 px-2"
+                    >
+                      <Bike className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                    Amenities auto-discovered
+                  </div>
                 </div>
               )}
             </div>

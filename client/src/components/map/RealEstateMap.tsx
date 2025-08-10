@@ -1015,6 +1015,9 @@ useEffect(() => {
     
     if (!cfg.enabled) {
       cleanupIsochrones();
+      // Clean up amenities too
+      if (map.getLayer('isochrone-amenities')) map.removeLayer('isochrone-amenities');
+      if (map.getSource('isochrone-amenities')) map.removeSource('isochrone-amenities');
       // Always keep 3D buildings visible - user preference
       if (map.getLayer('3d-buildings')) {
         map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
@@ -1127,11 +1130,142 @@ useEffect(() => {
           });
           
           console.log('Isochrone layers added successfully');
+          
+          // Automatically fetch amenities within isochrone zones
+          fetchAmenitiesInIsochrone(geo);
         })
         .catch((e) => {
           console.error('Isochrone fetch failed:', e);
           console.error('URL that failed:', url);
         });
+      
+      // Function to fetch amenities within isochrone zones
+      const fetchAmenitiesInIsochrone = async (isochroneData: any) => {
+        if (!isochroneData?.features?.length) return;
+        
+        const categories = [
+          'restaurant', 'cafe', 'school', 'hospital', 'pharmacy', 
+          'bank', 'gas_station', 'shopping_mall', 'gym', 'park',
+          'metro_station', 'bus_station', 'atm', 'grocery'
+        ];
+        
+        try {
+          // Get bounding box of the largest isochrone
+          const largestFeature = isochroneData.features[isochroneData.features.length - 1];
+          const bbox = getBoundingBox(largestFeature.geometry);
+          
+          const amenityPromises = categories.map(async (category) => {
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${category}.json?bbox=${bbox.join(',')}&limit=20&access_token=${accessToken}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.features?.map((feature: any) => ({
+              ...feature,
+              properties: {
+                ...feature.properties,
+                category,
+                name: feature.text || feature.place_name,
+                address: feature.place_name
+              }
+            })) || [];
+          });
+          
+          const allAmenities = (await Promise.all(amenityPromises)).flat();
+          console.log('Found amenities in isochrone:', allAmenities.length);
+          
+          // Add amenities to map
+          if (allAmenities.length > 0) {
+            displayAmenitiesOnMap(allAmenities);
+          }
+        } catch (error) {
+          console.error('Failed to fetch amenities in isochrone:', error);
+        }
+      };
+      
+      // Helper to get bounding box from geometry
+      const getBoundingBox = (geometry: any) => {
+        const coords = geometry.coordinates[0];
+        let minLng = coords[0][0], maxLng = coords[0][0];
+        let minLat = coords[0][1], maxLat = coords[0][1];
+        
+        coords.forEach(([lng, lat]: [number, number]) => {
+          minLng = Math.min(minLng, lng);
+          maxLng = Math.max(maxLng, lng);
+          minLat = Math.min(minLat, lat);
+          maxLat = Math.max(maxLat, lat);
+        });
+        
+        return [minLng, minLat, maxLng, maxLat];
+      };
+      
+      // Function to display amenities on map
+      const displayAmenitiesOnMap = (amenities: any[]) => {
+        const amenityGeoJSON = {
+          type: 'FeatureCollection',
+          features: amenities.map(amenity => ({
+            type: 'Feature',
+            geometry: amenity.geometry,
+            properties: {
+              category: amenity.properties.category,
+              name: amenity.properties.name,
+              address: amenity.properties.address,
+              icon: getCategoryIcon(amenity.properties.category)
+            }
+          }))
+        };
+        
+        // Remove existing amenity layers
+        if (map.getLayer('isochrone-amenities')) map.removeLayer('isochrone-amenities');
+        if (map.getSource('isochrone-amenities')) map.removeSource('isochrone-amenities');
+        
+        // Add amenity source and layer
+        map.addSource('isochrone-amenities', {
+          type: 'geojson',
+          data: amenityGeoJSON as any
+        });
+        
+        map.addLayer({
+          id: 'isochrone-amenities',
+          type: 'symbol',
+          source: 'isochrone-amenities',
+          layout: {
+            'icon-image': ['get', 'icon'],
+            'icon-size': 0.8,
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'name'],
+            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+            'text-size': 11,
+            'text-offset': [0, 1.5],
+            'text-anchor': 'top',
+            'text-max-width': 8
+          },
+          paint: {
+            'text-color': '#333',
+            'text-halo-color': 'white',
+            'text-halo-width': 1
+          }
+        });
+      };
+      
+      // Helper to get category icon
+      const getCategoryIcon = (category: string) => {
+        const iconMap: { [key: string]: string } = {
+          restaurant: 'restaurant-15',
+          cafe: 'cafe-15',
+          school: 'school-15',
+          hospital: 'hospital-15',
+          pharmacy: 'pharmacy-15',
+          bank: 'bank-15',
+          gas_station: 'fuel-15',
+          shopping_mall: 'shopping-15',
+          gym: 'fitness-centre-15',
+          park: 'park-15',
+          metro_station: 'rail-metro-15',
+          bus_station: 'bus-15',
+          atm: 'bank-15',
+          grocery: 'grocery-15'
+        };
+        return iconMap[category] || 'marker-15';
+      };
     };
     
     addIsochrones();
