@@ -68,6 +68,8 @@ const Index: React.FC = () => {
     setSelected(p);
     setSearchArea(circlePolygon(p.coords, 1200));
     setFlyTo({ center: p.coords, zoom: 16 });
+    // Clear flyTo after a short delay to prevent re-triggering
+    setTimeout(() => setFlyTo(null), 500);
   };
 
 
@@ -75,6 +77,8 @@ const Index: React.FC = () => {
     setSelected(null);
     setSearchArea(circlePolygon(pl.center, 1500));
     setFlyTo({ center: pl.center, zoom: 13 });
+    // Clear flyTo after a short delay to prevent re-triggering
+    setTimeout(() => setFlyTo(null), 500);
   };
 
   const handleRouteTo = (dest: [number, number], profile: 'driving'|'walking'|'cycling' = 'driving') => {
