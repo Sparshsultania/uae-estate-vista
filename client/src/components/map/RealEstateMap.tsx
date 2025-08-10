@@ -44,11 +44,29 @@ function buildZonesFeatureCollection() {
 
 export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; routeTo: (dest: [number, number], profile?: 'driving'|'walking'|'cycling') => void; };
 
+// Safe map operation utilities
+const safeGetLayer = (map: mapboxgl.Map | null, layerId: string) => {
+  try {
+    return map?.isStyleLoaded?.() && map?.getLayer?.(layerId);
+  } catch {
+    return null;
+  }
+};
+
+const safeGetSource = (map: mapboxgl.Map | null, sourceId: string) => {
+  try {
+    return map?.isStyleLoaded?.() && map?.getSource?.(sourceId);
+  } catch {
+    return null;
+  }
+};
+
 const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled, amenities, onPOISelect }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
   const selectedBuildingIds = useRef<Set<number | string>>(new Set());
+  const mapInitialized = useRef<boolean>(false);
   const hoverRaf = useRef<number | null>(null);
   const drawRef = useRef<any | null>(null);
   const directionsCtlRef = useRef<any | null>(null);
@@ -146,11 +164,12 @@ useEffect(() => {
       // Force and ensure 3D perspective right after the map fully loads
       map.on('load', () => {
         try {
+          mapInitialized.current = true;
           if (map.getZoom() < 15) map.setZoom(15);
           map.setPitch(60);
           map.setBearing(45);
           // Add 3D buildings layer if it's not present yet
-          if (!map.getLayer('3d-buildings')) {
+          if (map.isStyleLoaded() && !map.getLayer('3d-buildings')) {
             const layers = map.getStyle().layers || [];
             const labelLayerId = layers.find((l) => l.type === 'symbol' && (l.layout as any)?.['text-field'])?.id;
             map.addLayer(
@@ -864,35 +883,46 @@ useEffect(() => {
     }
 
     return () => {
-      if (!map) return;
-      if (map.getLayer(symbolId)) try { map.removeLayer(symbolId); } catch {}
-      if (map.getLayer(bubbleId)) try { map.removeLayer(bubbleId); } catch {}
-      if (map.getSource(srcId)) try { map.removeSource(srcId); } catch {}
+      if (!map || !mapInitialized.current) return;
+      try {
+        if (safeGetLayer(map, symbolId)) map.removeLayer(symbolId);
+        if (safeGetLayer(map, bubbleId)) map.removeLayer(bubbleId);
+        if (safeGetSource(map, srcId)) map.removeSource(srcId);
+      } catch (error) {
+        console.warn('Error removing amenity layers:', error);
+      }
     };
   }, [JSON.stringify(amenities), mapStyle]);
 
   // Search area highlight source
   useEffect(() => {
-    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
+    const map = mapRef.current; 
+    if (!map || !mapInitialized.current || !map.isStyleLoaded()) return;
+    
     const sourceId = 'search-area';
-    if (searchArea) {
-      if (map.getSource(sourceId)) {
-        (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(searchArea);
+    
+    try {
+      if (searchArea) {
+        if (safeGetSource(map, sourceId)) {
+          (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(searchArea);
+        } else {
+          map.addSource(sourceId, { type: 'geojson', data: searchArea });
+          map.addLayer({
+            id: 'search-area-fill', type: 'fill', source: sourceId,
+            paint: { 'fill-color': 'hsl(182,65%,45%)', 'fill-opacity': 0.12 }
+          });
+          map.addLayer({
+            id: 'search-area-outline', type: 'line', source: sourceId,
+            paint: { 'line-color': 'hsl(182,65%,45%)', 'line-width': 2, 'line-blur': 2, 'line-opacity': 0.9 }
+          });
+        }
       } else {
-        map.addSource(sourceId, { type: 'geojson', data: searchArea });
-        map.addLayer({
-          id: 'search-area-fill', type: 'fill', source: sourceId,
-          paint: { 'fill-color': 'hsl(182,65%,45%)', 'fill-opacity': 0.12 }
-        });
-        map.addLayer({
-          id: 'search-area-outline', type: 'line', source: sourceId,
-          paint: { 'line-color': 'hsl(182,65%,45%)', 'line-width': 2, 'line-blur': 2, 'line-opacity': 0.9 }
-        });
+        if (safeGetLayer(map, 'search-area-fill')) map.removeLayer('search-area-fill');
+        if (safeGetLayer(map, 'search-area-outline')) map.removeLayer('search-area-outline');
+        if (safeGetSource(map, sourceId)) map.removeSource(sourceId);
       }
-    } else {
-      if (map.getLayer('search-area-fill')) map.removeLayer('search-area-fill');
-      if (map.getLayer('search-area-outline')) map.removeLayer('search-area-outline');
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    } catch (error) {
+      console.warn('Error managing search area layers:', error);
     }
   }, [searchArea]);
 

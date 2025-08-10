@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import RealEstateMap, { type RealEstateMapHandle } from "@/components/map/RealEstateMap";
+import SafeRealEstateMap, { type RealEstateMapHandle } from "@/components/map/SafeRealEstateMap";
 import SearchBar from "@/components/controls/SearchBar";
 import ValuationForm from "@/components/controls/ValuationForm";
 import StatsPanel from "@/components/panels/StatsPanel";
@@ -272,7 +272,7 @@ const Index: React.FC = () => {
       <section className="container py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
         <article className="lg:col-span-8 xl:col-span-9 rounded-xl overflow-hidden border">
           <div className="relative h-[70vh] lg:h-[calc(100vh-180px)]">
-            <RealEstateMap
+            <SafeRealEstateMap
               ref={mapRef}
               token={token}
               selected={selected}
