@@ -517,12 +517,6 @@ const Index: React.FC = () => {
             </div>
           ) : (
             <>
-              <AmenityFilters inline selected={amenityCats} onChange={setAmenityCats} radius={amenityRadius} onRadius={setAmenityRadius} />
-              {amenitiesSB.searchBoxSupported === false && (
-                <div className="rounded-md border p-3 text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
-                  Live amenities are using a fallback (Geocoding API). For richer, faster results, enable "Search Box API" scope on your Mapbox public token and add your site origin in the Mapbox dashboard.
-                </div>
-              )}
               <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
             </>
           )}

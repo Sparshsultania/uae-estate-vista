@@ -1163,26 +1163,39 @@ useEffect(() => {
           const bbox = getBoundingBox(largestFeature.geometry);
           
           const amenityPromises = categories.map(async (category) => {
-            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${category}.json?bbox=${bbox.join(',')}&limit=20&access_token=${accessToken}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            return data.features?.map((feature: any) => ({
-              ...feature,
-              properties: {
-                ...feature.properties,
-                category,
-                name: feature.text || feature.place_name,
-                address: feature.place_name
-              }
-            })) || [];
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${category}.json?bbox=${bbox.join(',')}&limit=15&access_token=${accessToken}`;
+            console.log(`Fetching ${category} from:`, url);
+            
+            try {
+              const response = await fetch(url);
+              const data = await response.json();
+              console.log(`${category} response:`, data.features?.length || 0, 'items');
+              
+              return data.features?.map((feature: any) => ({
+                ...feature,
+                properties: {
+                  ...feature.properties,
+                  category,
+                  name: feature.text || feature.place_name,
+                  address: feature.place_name
+                }
+              })) || [];
+            } catch (error) {
+              console.error(`Failed to fetch ${category}:`, error);
+              return [];
+            }
           });
           
           const allAmenities = (await Promise.all(amenityPromises)).flat();
           console.log('Found amenities in isochrone:', allAmenities.length);
+          console.log('Sample amenities:', allAmenities.slice(0, 3));
           
           // Add amenities to map
           if (allAmenities.length > 0) {
+            console.log('Displaying amenities on map...');
             displayAmenitiesOnMap(allAmenities);
+          } else {
+            console.warn('No amenities found to display');
           }
         } catch (error) {
           console.error('Failed to fetch amenities in isochrone:', error);
@@ -1215,17 +1228,29 @@ useEffect(() => {
           return groups;
         }, {} as { [key: string]: any[] });
         
-        // Remove existing amenity layers
-        Object.keys(categoryGroups).forEach(category => {
-          if (map.getLayer(`amenities-${category}`)) map.removeLayer(`amenities-${category}`);
-          if (map.getSource(`amenities-${category}`)) map.removeSource(`amenities-${category}`);
+        // Remove existing amenity layers first
+        const allCategories = [
+          'restaurant', 'cafe', 'school', 'hospital', 'pharmacy', 
+          'bank', 'gas_station', 'shopping_mall', 'gym', 'park',
+          'metro_station', 'bus_station', 'atm', 'grocery'
+        ];
+        allCategories.forEach(category => {
+          try {
+            if (map.getLayer(`amenities-${category}`)) map.removeLayer(`amenities-${category}`);
+            if (map.getLayer(`amenities-${category}-labels`)) map.removeLayer(`amenities-${category}-labels`);
+            if (map.getSource(`amenities-${category}`)) map.removeSource(`amenities-${category}`);
+          } catch (e) {
+            console.warn(`Failed to remove amenity layer ${category}:`, e);
+          }
         });
         
         // Create separate layer for each category with distinct styling
         Object.entries(categoryGroups).forEach(([category, categoryAmenities]) => {
+          console.log(`Creating layer for ${category} with ${categoryAmenities.length} amenities`);
+          
           const categoryGeoJSON = {
             type: 'FeatureCollection',
-            features: categoryAmenities.map(amenity => ({
+            features: categoryAmenities.map((amenity: any) => ({
               type: 'Feature',
               geometry: amenity.geometry,
               properties: {
@@ -1255,16 +1280,18 @@ useEffect(() => {
                 'interpolate',
                 ['linear'],
                 ['zoom'],
-                10, 6,
-                16, 10
+                10, 8,
+                16, 12
               ],
               'circle-color': categoryColor,
-              'circle-opacity': 0.8,
+              'circle-opacity': 0.85,
               'circle-stroke-width': 2,
               'circle-stroke-color': '#ffffff',
-              'circle-stroke-opacity': 0.9
+              'circle-stroke-opacity': 1.0
             }
           });
+          
+          console.log(`Added layer amenities-${category} with color ${categoryColor}`);
           
           // Add labels for amenities
           map.addLayer({
