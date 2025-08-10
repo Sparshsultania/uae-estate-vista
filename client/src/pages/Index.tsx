@@ -55,7 +55,7 @@ const Index: React.FC = () => {
   }>({
     enabled: false,
     profile: 'driving',
-    minutes: [10, 20, 30]
+    minutes: [10, 15, 30] // Better time intervals for smoother visualization
   });
 
   // POI handling

@@ -1051,7 +1051,7 @@ useEffect(() => {
         return;
       }
       
-      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${origin[0]},${origin[1]}?contours_minutes=${contours}&polygons=true&denoise=1&access_token=${accessToken}`;
+      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${origin[0]},${origin[1]}?contours_minutes=${contours}&polygons=true&denoise=1&generalize=75&access_token=${accessToken}`;
       
       console.log('Fetching isochrone from:', url);
       console.log('Origin coordinates:', origin);
@@ -1087,12 +1087,18 @@ useEffect(() => {
               'fill-color': [
                 'match',
                 ['to-number', ['get', 'contour']],
-                mins[0], 'hsla(182,65%,45%,0.30)',
-                mins[1] ?? -1, 'hsla(152,53%,41%,0.22)',
-                mins[2] ?? -1, 'hsla(43,95%,55%,0.16)',
-                'hsla(210,30%,60%,0.12)'
+                mins[0], 'rgba(34, 197, 94, 0.25)', // Green for shortest time
+                mins[1] ?? -1, 'rgba(59, 130, 246, 0.20)', // Blue for medium time  
+                mins[2] ?? -1, 'rgba(168, 85, 247, 0.15)', // Purple for longest time
+                'rgba(107, 114, 128, 0.1)' // Default gray
               ],
-              'fill-opacity': 0.8
+              'fill-opacity': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                10, 0.6,
+                15, 0.3
+              ]
             }
           });
           
@@ -1101,8 +1107,21 @@ useEffect(() => {
             type: 'line',
             source: 'isochrones',
             paint: {
-              'line-color': 'hsl(182,65%,45%)',
-              'line-width': 2,
+              'line-color': [
+                'match',
+                ['to-number', ['get', 'contour']],
+                mins[0], 'rgb(34, 197, 94)',
+                mins[1] ?? -1, 'rgb(59, 130, 246)',
+                mins[2] ?? -1, 'rgb(168, 85, 247)',
+                'rgb(107, 114, 128)'
+              ],
+              'line-width': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                10, 1.5,
+                15, 2.5
+              ],
               'line-opacity': 0.8
             }
           });
