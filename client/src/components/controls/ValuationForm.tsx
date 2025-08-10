@@ -32,18 +32,38 @@ const ValuationForm: React.FC<Props> = ({ token, onPlaceSelect, onCalculate }) =
   const [sizeUnit, setSizeUnit] = React.useState<'sqft' | 'sqm'>("sqft");
 
   // Smart geocoding: flies to location when you finish typing (with better debouncing)
+  const lastGeocodedQuery = React.useRef<string>('');
+  
+  // Clear the last geocoded query if building field is cleared or changed significantly
+  React.useEffect(() => {
+    const q = building.trim();
+    if (q.length < 2) {
+      lastGeocodedQuery.current = '';
+    }
+  }, [building]);
+  
   React.useEffect(() => {
     const q = building.trim();
     const tk = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
     if (!q || q.length < 4 || !tk) return; // Require at least 4 characters
     
+    // Don't re-geocode the same query
+    if (q === lastGeocodedQuery.current) return;
+    
     const t = setTimeout(async () => {
+      // Double check if query still matches what user typed
+      if (q !== building.trim()) return;
+      
+      lastGeocodedQuery.current = q;
+      console.log('ValuationForm geocoding:', q);
+      
       try {
         const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${tk}&autocomplete=true&limit=1&country=AE&types=place,locality,neighborhood,address,poi`;
         const res = await fetch(url);
         const data = await res.json();
         const f = Array.isArray(data?.features) && data.features[0];
         if (f && onPlaceSelect) {
+          console.log('ValuationForm triggering flyTo for:', f.place_name);
           // Add timestamp to prevent re-triggering
           onPlaceSelect({ 
             center: f.center as [number, number], 
@@ -55,7 +75,7 @@ const ValuationForm: React.FC<Props> = ({ token, onPlaceSelect, onCalculate }) =
       } catch (e) {
         console.warn('Geocoding failed', e);
       }
-    }, 1500); // Longer delay - only trigger when user stops typing
+    }, 2000); // Even longer delay
     return () => clearTimeout(t);
   }, [building, token, onPlaceSelect]);
 
