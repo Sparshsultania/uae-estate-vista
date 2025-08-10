@@ -5,10 +5,11 @@ import ValuationForm from "@/components/controls/ValuationForm";
 import StatsPanel from "@/components/panels/StatsPanel";
 import { properties, PropertyPoint } from "@/data/mockProperties";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Map, Sparkles, Settings2 } from "lucide-react";
+import { Map, Sparkles, Settings2, X, BarChart3, Building2, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AmenityFilters, { type AmenityCategory, ALL_AMENITY_CATEGORIES } from "@/components/controls/AmenityFilters";
 import { useSearchBoxAmenities } from "@/hooks/useSearchBoxAmenities";
@@ -353,13 +354,123 @@ const Index: React.FC = () => {
           </div>
         </article>
         <aside className="lg:col-span-4 xl:col-span-3 space-y-3">
-          <AmenityFilters inline selected={amenityCats} onChange={setAmenityCats} radius={amenityRadius} onRadius={setAmenityRadius} />
-          {amenitiesSB.searchBoxSupported === false && (
+          {selectedPropertyDetails ? (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg font-bold mb-1">{selectedPropertyDetails.name}</CardTitle>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="w-4 h-4" />
+                        <span>{selectedPropertyDetails.location}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setSelectedPropertyDetails(null)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {selectedPropertyDetails.imageUrl && (
+                    <div className="h-32 overflow-hidden rounded-lg">
+                      <img 
+                        src={selectedPropertyDetails.imageUrl} 
+                        alt={selectedPropertyDetails.name} 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="text-xs font-medium text-gray-600">Market Value</div>
+                      <div className="text-sm font-bold">AED {selectedPropertyDetails.value.toLocaleString()}</div>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <div className="text-xs font-medium text-gray-600">Yield</div>
+                      <div className="text-sm font-bold text-green-600">{selectedPropertyDetails.yield}%</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs text-gray-600">Per Sq.Ft</div>
+                      <div className="font-semibold">AED {selectedPropertyDetails.pricePerSqFt}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600">Score</div>
+                      <div className="font-semibold text-orange-600">{selectedPropertyDetails.score}/100</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Investment Score
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative w-20 h-20 mx-auto">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                      <circle
+                        cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${(selectedPropertyDetails.score / 100) * 251} 251`}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-base font-bold">{selectedPropertyDetails.score}</div>
+                        <div className="text-xs text-gray-600">/ 100</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-center mt-2">
+                    <Badge variant="secondary" className={selectedPropertyDetails.score >= 80 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
+                      {selectedPropertyDetails.score >= 80 ? 'Excellent' : 'Good'}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Type</span>
+                    <span className="font-medium">{selectedPropertyDetails.propertyType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Trend</span>
+                    <span className="font-medium">{selectedPropertyDetails.marketTrend}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <>
+              <AmenityFilters inline selected={amenityCats} onChange={setAmenityCats} radius={amenityRadius} onRadius={setAmenityRadius} />
+              {amenitiesSB.searchBoxSupported === false && (
             <div className="rounded-md border p-3 text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
               Live amenities are using a fallback (Geocoding API). For richer, faster results, enable “Search Box API” scope on your Mapbox public token and add your site origin in the Mapbox dashboard.
             </div>
           )}
-          <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
+              <StatsPanel selected={selected} onRouteTo={handleRouteTo} amenitiesOverride={amenitiesSB.results} amenitiesLoadingOverride={amenitiesSB.loading} />
+            </>
+          )}
         </aside>
       </section>
 
@@ -369,11 +480,7 @@ const Index: React.FC = () => {
           Smart insights highlighting undervalued zones with emerald glow. Smooth zoom & hover-rise interactions.
         </div>
       </footer>
-      {/* Property Details Panel - Full-screen sidebar */}
-      <PropertyDetailsPanel 
-        property={selectedPropertyDetails}
-        onClose={() => setSelectedPropertyDetails(null)}
-      />
+
     </main>
   );
 };
