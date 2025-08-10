@@ -64,6 +64,7 @@ const Index: React.FC = () => {
 
   // Property details state
   const [selectedPropertyDetails, setSelectedPropertyDetails] = useState<PropertyData | null>(null);
+  const [isLoadingPropertyDetails, setIsLoadingPropertyDetails] = useState(false);
 
   // Amenities and filters
   const [amenityCats, setAmenityCats] = useState<AmenityCategory[]>([]);
@@ -79,61 +80,55 @@ const Index: React.FC = () => {
 
   const handleSelect = async (property: PropertyPoint) => {
     setSelected(property);
+    setIsLoadingPropertyDetails(true);
     const timestamp = Date.now();
     setFlyTo({ center: property.coords as [number, number], zoom: 16, timestamp });
     
-    // Fetch building information using Mapbox Reverse Geocoding
+    // Generate property data immediately to avoid loading state
+    const generatePropertyData = (name: string = 'Selected Property'): PropertyData => ({
+      id: `building-${timestamp}`,
+      name,
+      address: 'Dubai, UAE', 
+      location: 'Dubai, UAE',
+      coordinates: property.coords as [number, number],
+      value: Math.floor(Math.random() * 2000000) + 800000, // 800k - 2.8M AED
+      pricePerSqFt: Math.floor(Math.random() * 800) + 600, // 600-1400 AED/sqft
+      yield: Math.round((Math.random() * 4 + 5) * 10) / 10, // 5-9% yield
+      score: Math.floor(Math.random() * 30) + 70, // 70-100 score
+      propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
+      bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
+      size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
+      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
+      imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
+    });
+    
+    // Try to fetch building information using Mapbox Reverse Geocoding
     try {
       const tk = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
-      if (!tk) return;
-      
-      const [lng, lat] = property.coords as [number, number];
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${tk}&types=address,poi`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const feature = data.features?.[0];
-      
-      if (feature) {
-        // Create property data from the geocoded result
-        const propertyData: PropertyData = {
-          id: `building-${timestamp}`,
-          name: feature.text || feature.place_name || 'Selected Building',
-          address: feature.place_name || 'Dubai, UAE',
-          location: feature.place_name || 'Dubai, UAE',
-          coordinates: [lng, lat],
-          value: Math.floor(Math.random() * 2000000) + 800000, // 800k - 2.8M AED
-          pricePerSqFt: Math.floor(Math.random() * 800) + 600, // 600-1400 AED/sqft
-          yield: Math.round((Math.random() * 4 + 5) * 10) / 10, // 5-9% yield
-          score: Math.floor(Math.random() * 30) + 70, // 70-100 score
-          propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
-          bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
-          size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
-          marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
-          imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
-        };
-        setSelectedPropertyDetails(propertyData);
+      if (tk) {
+        const [lng, lat] = property.coords as [number, number];
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${tk}&types=address,poi`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const feature = data.features?.[0];
+        
+        if (feature) {
+          const buildingName = feature.text || feature.place_name || 'Selected Building';
+          const propertyData = generatePropertyData(buildingName);
+          propertyData.address = feature.place_name || 'Dubai, UAE';
+          propertyData.location = feature.place_name || 'Dubai, UAE';
+          setSelectedPropertyDetails(propertyData);
+          setIsLoadingPropertyDetails(false);
+          return;
+        }
       }
     } catch (error) {
       console.error('Error fetching building details:', error);
-      // Fallback to basic property data
-      const propertyData: PropertyData = {
-        id: `building-${timestamp}`,
-        name: 'Selected Building',
-        address: 'Dubai, UAE',
-        location: 'Dubai, UAE',
-        coordinates: property.coords as [number, number],
-        value: Math.floor(Math.random() * 2000000) + 800000,
-        pricePerSqFt: Math.floor(Math.random() * 800) + 600,
-        yield: Math.round((Math.random() * 4 + 5) * 10) / 10,
-        score: Math.floor(Math.random() * 30) + 70,
-        propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
-        bedrooms: Math.floor(Math.random() * 4) + 1,
-        size: Math.floor(Math.random() * 2000) + 800,
-        marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
-        imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
-      };
-      setSelectedPropertyDetails(propertyData);
     }
+    
+    // Fallback: Set basic property data
+    setSelectedPropertyDetails(generatePropertyData());
+    setIsLoadingPropertyDetails(false);
   };
 
   const handlePlaceSelect = (pl: { name: string; center: [number, number]; timestamp?: number }) => {
@@ -141,7 +136,7 @@ const Index: React.FC = () => {
     const timestamp = pl.timestamp || Date.now();
     setFlyTo({ center: pl.center, zoom: 15, timestamp });
     
-    // Create mock property data for searched locations
+    // Create property data for searched locations
     const propertyData: PropertyData = {
       id: `search-${timestamp}`,
       name: pl.name,
@@ -159,9 +154,7 @@ const Index: React.FC = () => {
       imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
     };
     setSelectedPropertyDetails(propertyData);
-    setSelected(null);
     setSearchArea(circlePolygon(pl.center, 1500));
-    // Use the provided timestamp, or generate one if not provided
     setFlyTo({ center: pl.center, zoom: 13, timestamp: pl.timestamp || Date.now() });
   };
 
@@ -409,7 +402,14 @@ const Index: React.FC = () => {
           </article>
           
           <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
-          {selectedPropertyDetails ? (
+          {isLoadingPropertyDetails ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
+                <div className="text-sm text-muted-foreground">Loading property details...</div>
+              </CardContent>
+            </Card>
+          ) : selectedPropertyDetails ? (
             <div className="space-y-4">
               <Card>
                 <CardHeader className="pb-3">
