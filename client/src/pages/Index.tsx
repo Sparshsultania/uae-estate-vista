@@ -258,6 +258,7 @@ const Index: React.FC = () => {
         </article>
         
         <aside className="lg:col-span-4 xl:col-span-3 space-y-3">
+          <ValuationForm token={token} onPlaceSelect={handlePlaceSelect} />
           {selectedPropertyDetails ? (
             <div className="space-y-4">
               <Card>
@@ -385,11 +386,7 @@ const Index: React.FC = () => {
         </div>
       </footer>
 
-      {/* Property Details Panel - Full-screen sidebar */}
-      <PropertyDetailsPanel 
-        property={selectedPropertyDetails}
-        onClose={() => setSelectedPropertyDetails(null)}
-      />
+
     </main>
   );
 };
