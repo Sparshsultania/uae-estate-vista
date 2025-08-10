@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { POIDetails } from '@/components/panels/POIDetailsPanel';
+import { smartTranslate, enhanceWithTranslation } from '../utils/arabicTranslation';
 
 interface MapboxPOI {
   id: string;
@@ -136,12 +137,18 @@ const usePOIData = (token: string) => {
 
       const category = getCategory(poi);
       
+      // Extract and translate the name and address
+      const rawName = poi.place_name.split(',')[0]; // Take first part before comma
+      const translatedName = smartTranslate(rawName);
+      const translatedAddress = smartTranslate(poi.place_name);
+      
       const poiDetails: POIDetails = {
         id: poi.id,
-        name: poi.place_name.split(',')[0], // Take first part before comma
-        address: poi.place_name,
+        name: translatedName,
+        address: translatedAddress,
         category,
         coordinates: poi.geometry.coordinates,
+        originalName: rawName !== translatedName ? rawName : undefined,
         description: `${category} located in ${poi.context?.find(c => c.id.includes('place'))?.text || 'Dubai'}`,
         imageUrl: generateBuildingImage(poi),
         rating: 4.0 + Math.random(), // Generate realistic rating between 4-5
@@ -152,7 +159,13 @@ const usePOIData = (token: string) => {
         amenities: category === 'Building' ? ['Parking', 'Security', 'Elevator'] : 
                   category === 'Restaurant' ? ['WiFi', 'Air Conditioning', 'Outdoor Seating'] : 
                   ['WiFi', 'Air Conditioning'],
-        reviews: generateSampleReviews(category)
+        reviews: generateSampleReviews(category),
+        // Generate property-specific data like JVC Skyline format
+        value: category === 'Building' ? Math.floor(Math.random() * 2000000) + 800000 : undefined, // 800k - 2.8M AED
+        pricePerSqFt: category === 'Building' ? Math.floor(Math.random() * 800) + 600 : undefined, // 600-1400 AED/sqft
+        yield: category === 'Building' ? Math.round((Math.random() * 4 + 5) * 10) / 10 : undefined, // 5-9% yield
+        score: category === 'Building' ? Math.floor(Math.random() * 30) + 70 : undefined, // 70-100 score
+        propertyType: category === 'Building' ? (Math.random() > 0.5 ? 'Apartment' : 'Villa') : undefined
       };
 
       return poiDetails;

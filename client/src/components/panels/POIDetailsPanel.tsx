@@ -24,6 +24,13 @@ export interface POIDetails {
     rating: number;
     author: string;
   }[];
+  // Property-specific fields to match JVC Skyline format
+  value?: number;
+  pricePerSqFt?: number;
+  yield?: number;
+  score?: number;
+  propertyType?: string;
+  originalName?: string;
 }
 
 interface POIDetailsPanelProps {
@@ -55,22 +62,72 @@ const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, onClose, onGetDi
   };
 
   return (
-    <Card className="absolute top-4 left-4 w-96 max-h-[calc(100vh-2rem)] overflow-y-auto z-50 shadow-xl">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-bold mb-1">{poi.name}</CardTitle>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="w-4 h-4" />
-              <span>{poi.address}</span>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose} className="ml-2">
+    <Card className="absolute top-4 right-4 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto z-50 shadow-xl bg-white">
+      {/* Header with property image */}
+      {poi.imageUrl && (
+        <div className="relative h-48 overflow-hidden rounded-t-lg">
+          <img src={poi.imageUrl} alt={poi.name} className="w-full h-full object-cover" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onClose} 
+            className="absolute top-2 right-2 bg-white/80 hover:bg-white text-black"
+          >
             ×
           </Button>
         </div>
+      )}
+      
+      <CardHeader className="pb-2">
+        {!poi.imageUrl && (
+          <div className="flex justify-end mb-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              ×
+            </Button>
+          </div>
+        )}
+        <CardTitle className="text-xl font-bold mb-1">{poi.name}</CardTitle>
+        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+          <MapPin className="w-4 h-4" />
+          <span>{poi.address}</span>
+          {poi.originalName && (
+            <span className="text-xs italic">• {poi.originalName}</span>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Property Stats Grid - Match JVC Skyline format */}
+        {(poi.value || poi.pricePerSqFt || poi.yield || poi.score) && (
+          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+            {poi.value && (
+              <div>
+                <div className="text-sm font-medium text-gray-600">Value</div>
+                <div className="text-lg font-bold">AED {poi.value.toLocaleString()}</div>
+              </div>
+            )}
+            {poi.pricePerSqFt && (
+              <div>
+                <div className="text-sm font-medium text-gray-600">Per Sq.Ft</div>
+                <div className="text-lg font-bold">AED {poi.pricePerSqFt}</div>
+              </div>
+            )}
+            {poi.yield && (
+              <div>
+                <div className="text-sm font-medium text-gray-600">Yield</div>
+                <div className="text-lg font-bold text-green-600">{poi.yield}%</div>
+              </div>
+            )}
+            {poi.score && (
+              <div>
+                <div className="text-sm font-medium text-gray-600">Score</div>
+                <div className="text-lg font-bold text-orange-600">{poi.score}/100</div>
+              </div>
+            )}
+          </div>
+        )}
         
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2">
           <Badge variant="secondary">{poi.category}</Badge>
           {poi.rating && (
             <div className="flex items-center gap-1">
@@ -80,62 +137,39 @@ const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, onClose, onGetDi
           )}
           {renderPriceLevel(poi.priceLevel)}
         </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {poi.imageUrl && (
-          <div className="rounded-lg overflow-hidden">
-            <img 
-              src={poi.imageUrl} 
-              alt={poi.name}
-              className="w-full h-48 object-cover"
-              onError={(e) => {
-                // Fallback to a default image if the POI image fails to load
-                (e.target as HTMLImageElement).src = `https://via.placeholder.com/400x200/e2e8f0/64748b?text=${encodeURIComponent(poi.name)}`;
-              }}
-            />
-          </div>
-        )}
 
         {poi.description && (
-          <p className="text-sm text-muted-foreground">{poi.description}</p>
+          <p className="text-sm text-gray-600">{poi.description}</p>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {poi.phone && (
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-muted-foreground" />
-              <a href={`tel:${poi.phone}`} className="text-sm hover:text-primary">
-                {poi.phone}
-              </a>
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="w-4 h-4 text-gray-500" />
+              <span>{poi.phone}</span>
             </div>
           )}
-
+          
           {poi.website && (
-            <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-muted-foreground" />
-              <a 
-                href={poi.website} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm hover:text-primary"
-              >
+            <div className="flex items-center gap-2 text-sm">
+              <Globe className="w-4 h-4 text-gray-500" />
+              <a href={poi.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                 Visit Website
               </a>
             </div>
           )}
 
           {poi.hours && (
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm">{poi.hours}</span>
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4 text-gray-500" />
+              <span>{poi.hours}</span>
             </div>
           )}
         </div>
 
         {poi.amenities && poi.amenities.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium mb-2">Amenities</h4>
+            <h4 className="font-semibold mb-2">Amenities</h4>
             <div className="flex flex-wrap gap-1">
               {poi.amenities.map((amenity, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
@@ -148,48 +182,31 @@ const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, onClose, onGetDi
 
         {poi.reviews && poi.reviews.length > 0 && (
           <div>
-            <Separator className="my-3" />
-            <h4 className="text-sm font-medium mb-2">Recent Reviews</h4>
-            <div className="space-y-3">
+            <h4 className="font-semibold mb-2">Reviews</h4>
+            <div className="space-y-2">
               {poi.reviews.slice(0, 2).map((review, index) => (
-                <div key={index} className="text-xs">
-                  <div className="flex items-center gap-1 mb-1">
-                    <div className="flex">
+                <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center">
                       {Array.from({ length: 5 }, (_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-3 h-3 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} 
-                        />
+                        <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current text-yellow-500' : 'text-gray-300'}`} />
                       ))}
                     </div>
-                    <span className="font-medium">{review.author}</span>
+                    <span className="text-xs font-medium">{review.author}</span>
                   </div>
-                  <p className="text-muted-foreground">{review.text}</p>
+                  <p className="text-xs text-gray-700">{review.text}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        <Separator className="my-3" />
-        
-        <div className="flex gap-2">
-          <Button 
-            onClick={handleDirections} 
-            className="flex-1" 
-            size="sm"
-          >
-            <Navigation className="w-4 h-4 mr-2" />
-            Get Directions
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${poi.coordinates[1]},${poi.coordinates[0]}`, '_blank')}
-          >
-            View on Google Maps
-          </Button>
-        </div>
+        <Separator />
+
+        <Button onClick={handleDirections} className="w-full">
+          <Navigation className="w-4 h-4 mr-2" />
+          Get Directions
+        </Button>
       </CardContent>
     </Card>
   );
