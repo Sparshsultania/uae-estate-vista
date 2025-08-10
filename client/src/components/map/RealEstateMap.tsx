@@ -497,13 +497,14 @@ useEffect(() => {
                 centroid[0] /= coords.length;
                 centroid[1] /= coords.length;
                 
-                // Trigger the onSelect callback with building coordinates for property details
+                // Use Mapbox Geocoding API to get the actual building name
                 if (onSelect) {
-                  const propertyPoint: PropertyPoint = {
+                  // First, create a temporary property point with the building ID
+                  const tempPropertyPoint: PropertyPoint = {
                     id: fid.toString(),
                     coords: [centroid[0], centroid[1]],
-                    name: closestFeature.properties?.name || `Building ${fid}`,
-                    community: "Dubai", // Default community
+                    name: `Loading...`,
+                    community: "Dubai",
                     estimatedValueAED: Math.floor(Math.random() * 2000000) + 800000,
                     pricePerSqft: Math.floor(Math.random() * 800) + 600,
                     rentYield: Math.round((Math.random() * 4 + 5) * 10) / 10,
@@ -513,7 +514,55 @@ useEffect(() => {
                       value: Math.floor(Math.random() * 1000) + 1500
                     }))
                   };
-                  onSelect(propertyPoint);
+                  
+                  // Show loading state first
+                  onSelect(tempPropertyPoint);
+                  
+                  // Then fetch the real building name using reverse geocoding
+                  fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${centroid[0]},${centroid[1]}.json?access_token=${token}&types=poi,address`)
+                    .then(response => response.json())
+                    .then(data => {
+                      let buildingName = `Building ${fid}`;
+                      let community = "Dubai";
+                      
+                      if (data.features && data.features.length > 0) {
+                        const feature = data.features[0];
+                        
+                        // Try to get a proper building/POI name
+                        if (feature.place_type?.includes('poi')) {
+                          buildingName = feature.text || feature.place_name || buildingName;
+                        } else if (feature.place_type?.includes('address')) {
+                          buildingName = feature.place_name || buildingName;
+                        }
+                        
+                        // Extract community/neighborhood from context
+                        if (feature.context) {
+                          const neighborhood = feature.context.find((c: any) => c.id.startsWith('neighborhood'));
+                          const locality = feature.context.find((c: any) => c.id.startsWith('locality'));
+                          const district = feature.context.find((c: any) => c.id.startsWith('district'));
+                          
+                          community = neighborhood?.text || locality?.text || district?.text || "Dubai";
+                        }
+                      }
+                      
+                      // Update with the real building name
+                      const updatedPropertyPoint: PropertyPoint = {
+                        ...tempPropertyPoint,
+                        name: buildingName,
+                        community: community
+                      };
+                      
+                      onSelect(updatedPropertyPoint);
+                    })
+                    .catch(error => {
+                      console.error('Failed to geocode building location:', error);
+                      // Fallback to the temporary property point
+                      const fallbackPropertyPoint: PropertyPoint = {
+                        ...tempPropertyPoint,
+                        name: closestFeature.properties?.name || `Building ${fid}`,
+                      };
+                      onSelect(fallbackPropertyPoint);
+                    });
                 }
                 
                 // Remove previous building marker if exists
