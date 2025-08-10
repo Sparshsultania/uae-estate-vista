@@ -6,6 +6,7 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import "@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css";
 import { properties, toFeatureCollection, zones as zoneList, PropertyPoint } from "@/data/mockProperties";
 import type { AmenityResult } from "@/hooks/useSearchBoxAmenities";
+import type { POIDetails } from "@/components/panels/POIDetailsPanel";
 export type IsochroneSettings = {
   enabled?: boolean;
   profile?: 'driving' | 'walking' | 'cycling';
@@ -25,6 +26,7 @@ export type RealEstateMapProps = {
   isochrone?: IsochroneSettings;
   directionsEnabled?: boolean;
   amenities?: AmenityResult[];
+  onPOISelect?: (coordinates: [number, number]) => void;
 };
 
 const UAE_CENTER: [number, number] = [55.2744, 25.1972];
@@ -42,7 +44,7 @@ function buildZonesFeatureCollection() {
 
 export type RealEstateMapHandle = { startDrawPolygon: () => void; clearDraw: () => void; routeTo: (dest: [number, number], profile?: 'driving'|'walking'|'cycling') => void; };
 
-const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled, amenities }, ref) => {
+const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({ token, selected, onSelect, showPriceHeat, showYieldHeat, searchArea, onAreaChange, mapStyle, flyTo, isochrone, directionsEnabled, amenities, onPOISelect }, ref) => {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredBuildingId = useRef<number | string | null>(null);
@@ -437,7 +439,7 @@ useEffect(() => {
         // Pointer cursor when entering buildings
         map!.on('mouseenter', '3d-buildings', () => { map!.getCanvas().style.cursor = 'pointer'; });
 
-        // Click to select building (multi-part selection within a radius)
+        // Enhanced click handler for buildings with POI integration
         map!.on('click', '3d-buildings', (e) => {
           const pad = 35; // pixels around click
           const bbox: [[number, number], [number, number]] = [
@@ -445,6 +447,7 @@ useEffect(() => {
             [e.point.x + pad, e.point.y + pad],
           ];
           const feats = map!.queryRenderedFeatures(bbox, { layers: ['3d-buildings'] });
+          
           // Clear previous selection
           selectedBuildingIds.current.forEach((pid) => {
             map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: pid }, { selected: false });
@@ -458,7 +461,17 @@ useEffect(() => {
             map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
           });
 
-          // Also select the nearest property within ~300m so we can show the photo + stats popup
+          // Close any existing popups first
+          const popups = document.getElementsByClassName('mapboxgl-popup');
+          for (let i = 0; i < popups.length; i++) {
+            popups[i].remove();
+          }
+
+          // Trigger POI data fetch for the clicked location
+          const clickCoords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+          onPOISelect?.(clickCoords);
+
+          // Also select the nearest property within ~300m for property stats
           const distMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;

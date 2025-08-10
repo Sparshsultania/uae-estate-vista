@@ -12,6 +12,8 @@ import { Map, Sparkles, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AmenityFilters, { type AmenityCategory, ALL_AMENITY_CATEGORIES } from "@/components/controls/AmenityFilters";
 import { useSearchBoxAmenities } from "@/hooks/useSearchBoxAmenities";
+import POIDetailsPanel, { type POIDetails } from "@/components/panels/POIDetailsPanel";
+import usePOIData from "@/hooks/usePOIData";
 
 function circlePolygon(center: [number, number], radiusMeters: number, points = 64): GeoJSON.Feature<GeoJSON.Polygon> {
   const [lng, lat] = center;
@@ -58,6 +60,10 @@ const Index: React.FC = () => {
   const selectedCenter = selected?.coords as [number, number] | undefined;
   const amenitiesSB = useSearchBoxAmenities({ token, center: selectedCenter ?? null, route: null, categories: amenityCats, radiusMeters: amenityRadius, limitPerCategory: 12 });
 
+  // POI state
+  const [selectedPOI, setSelectedPOI] = useState<POIDetails | null>(null);
+  const { fetchPOIDetails, isLoading: poiLoading } = usePOIData(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '');
+
   const handleSelect = (p: PropertyPoint) => {
     setSelected(p);
     setSearchArea(circlePolygon(p.coords, 1200));
@@ -78,6 +84,31 @@ const Index: React.FC = () => {
     } else {
       mapRef.current?.routeTo(dest, profile);
     }
+  };
+
+  const handlePOISelect = async (coordinates: [number, number]) => {
+    try {
+      const poiDetails = await fetchPOIDetails(coordinates);
+      if (poiDetails) {
+        setSelectedPOI(poiDetails);
+      }
+    } catch (error) {
+      console.error('Error fetching POI details:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch location details. Please try again.',
+        variant: 'destructive'
+      } as any);
+    }
+  };
+
+  const handlePOIClose = () => {
+    setSelectedPOI(null);
+  };
+
+  const handleGetDirections = (coordinates: [number, number]) => {
+    handleRouteTo(coordinates);
+    setSelectedPOI(null); // Close POI panel when getting directions
   };
 
   const saveToken = () => {
@@ -246,6 +277,14 @@ const Index: React.FC = () => {
               isochrone={{ enabled: isoEnabled, profile: isoProfile, minutes: isoMinutes }}
               directionsEnabled={directionsEnabled}
               amenities={amenitiesSB.results}
+              onPOISelect={handlePOISelect}
+            />
+            
+            {/* POI Details Panel Overlay */}
+            <POIDetailsPanel 
+              poi={selectedPOI}
+              onClose={handlePOIClose}
+              onGetDirections={handleGetDirections}
             />
             {!hasToken && showTokenPanel && (
               <div className="absolute left-4 top-4 z-20 max-w-md">
