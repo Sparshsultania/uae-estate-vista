@@ -64,7 +64,6 @@ const Index: React.FC = () => {
 
   // Property details state
   const [selectedPropertyDetails, setSelectedPropertyDetails] = useState<PropertyData | null>(null);
-  const [isLoadingPropertyDetails, setIsLoadingPropertyDetails] = useState(false);
 
   // Amenities and filters
   const [amenityCats, setAmenityCats] = useState<AmenityCategory[]>([]);
@@ -78,16 +77,15 @@ const Index: React.FC = () => {
 
   const mapRef = useRef<RealEstateMapHandle>(null);
 
-  const handleSelect = async (property: PropertyPoint) => {
+  const handleSelect = (property: PropertyPoint) => {
     setSelected(property);
-    setIsLoadingPropertyDetails(true);
     const timestamp = Date.now();
     setFlyTo({ center: property.coords as [number, number], zoom: 16, timestamp });
     
-    // Generate property data immediately to avoid loading state
-    const generatePropertyData = (name: string = 'Selected Property'): PropertyData => ({
+    // Generate property data immediately - no loading state needed
+    const propertyData: PropertyData = {
       id: `building-${timestamp}`,
-      name,
+      name: 'Selected Property',
       address: 'Dubai, UAE', 
       location: 'Dubai, UAE',
       coordinates: property.coords as [number, number],
@@ -100,35 +98,34 @@ const Index: React.FC = () => {
       size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
       marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
       imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
-    });
+    };
     
-    // Try to fetch building information using Mapbox Reverse Geocoding
-    try {
-      const tk = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
-      if (tk) {
-        const [lng, lat] = property.coords as [number, number];
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${tk}&types=address,poi`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const feature = data.features?.[0];
-        
-        if (feature) {
-          const buildingName = feature.text || feature.place_name || 'Selected Building';
-          const propertyData = generatePropertyData(buildingName);
-          propertyData.address = feature.place_name || 'Dubai, UAE';
-          propertyData.location = feature.place_name || 'Dubai, UAE';
-          setSelectedPropertyDetails(propertyData);
-          setIsLoadingPropertyDetails(false);
-          return;
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching building details:', error);
+    // Set property data immediately
+    setSelectedPropertyDetails(propertyData);
+    
+    // Optionally enhance with geocoding in background
+    const tk = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
+    if (tk) {
+      const [lng, lat] = property.coords as [number, number];
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${tk}&types=address,poi`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const feature = data.features?.[0];
+          if (feature) {
+            const buildingName = feature.text || feature.place_name || 'Selected Building';
+            setSelectedPropertyDetails(prev => prev ? {
+              ...prev,
+              name: buildingName,
+              address: feature.place_name || 'Dubai, UAE',
+              location: feature.place_name || 'Dubai, UAE'
+            } : prev);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching building details:', error);
+        });
     }
-    
-    // Fallback: Set basic property data
-    setSelectedPropertyDetails(generatePropertyData());
-    setIsLoadingPropertyDetails(false);
   };
 
   const handlePlaceSelect = (pl: { name: string; center: [number, number]; timestamp?: number }) => {
@@ -402,14 +399,7 @@ const Index: React.FC = () => {
           </article>
           
           <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
-          {isLoadingPropertyDetails ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
-                <div className="text-sm text-muted-foreground">Loading property details...</div>
-              </CardContent>
-            </Card>
-          ) : selectedPropertyDetails ? (
+          {selectedPropertyDetails ? (
             <div className="space-y-4">
               <Card>
                 <CardHeader className="pb-3">
