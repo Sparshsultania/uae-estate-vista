@@ -497,6 +497,20 @@ useEffect(() => {
                 centroid[0] /= coords.length;
                 centroid[1] /= coords.length;
                 
+                // Trigger the onSelect callback with building coordinates for property details
+                if (onSelect) {
+                  const propertyPoint: PropertyPoint = {
+                    id: fid.toString(),
+                    coords: [centroid[0], centroid[1]],
+                    name: closestFeature.properties?.name || `Building ${fid}`,
+                    price: Math.floor(Math.random() * 2000000) + 800000,
+                    pricePerSqft: Math.floor(Math.random() * 800) + 600,
+                    yield: Math.round((Math.random() * 4 + 5) * 10) / 10,
+                    score: Math.floor(Math.random() * 30) + 70
+                  };
+                  onSelect(propertyPoint);
+                }
+                
                 // Remove previous building marker if exists
                 if (map!.getSource('building-marker')) {
                   if (map!.getLayer('building-marker-icon')) map!.removeLayer('building-marker-icon');
