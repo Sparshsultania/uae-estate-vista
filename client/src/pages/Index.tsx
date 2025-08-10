@@ -168,9 +168,30 @@ const Index: React.FC = () => {
   const handleRouteTo = (dest: [number, number], profile: 'driving'|'walking'|'cycling' = 'driving') => {
     if (!directionsEnabled) {
       setDirectionsEnabled(true);
+      // Disable isochrones when enabling directions to avoid conflicts
+      if (isochroneSettings.enabled) {
+        setIsochroneSettings(prev => ({ ...prev, enabled: false }));
+      }
       setTimeout(() => mapRef.current?.routeTo(dest, profile), 600);
     } else {
       mapRef.current?.routeTo(dest, profile);
+    }
+  };
+
+  // Enhanced toggle handlers to prevent conflicts
+  const handleDirectionsToggle = (enabled: boolean) => {
+    setDirectionsEnabled(enabled);
+    if (enabled && isochroneSettings.enabled) {
+      // Disable isochrones when enabling directions
+      setIsochroneSettings(prev => ({ ...prev, enabled: false }));
+    }
+  };
+
+  const handleIsochroneToggle = (enabled: boolean) => {
+    setIsochroneSettings(prev => ({ ...prev, enabled }));
+    if (enabled && directionsEnabled) {
+      // Disable directions when enabling isochrones
+      setDirectionsEnabled(false);
     }
   };
 
@@ -275,7 +296,7 @@ const Index: React.FC = () => {
               <Switch 
                 id="toggle-directions" 
                 checked={directionsEnabled} 
-                onCheckedChange={setDirectionsEnabled} 
+                onCheckedChange={handleDirectionsToggle} 
               />
               <label htmlFor="toggle-directions" className="text-sm cursor-pointer">Directions</label>
             </div>
@@ -283,7 +304,7 @@ const Index: React.FC = () => {
               <Switch 
                 id="toggle-isochrone" 
                 checked={isochroneSettings.enabled} 
-                onCheckedChange={(checked) => setIsochroneSettings(prev => ({ ...prev, enabled: checked }))} 
+                onCheckedChange={handleIsochroneToggle} 
               />
               <label htmlFor="toggle-isochrone" className="text-sm cursor-pointer">Travel time zones</label>
             </div>

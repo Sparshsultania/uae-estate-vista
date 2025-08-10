@@ -101,6 +101,7 @@ const RealEstateMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(
             (map.getSource('route') as mapboxgl.GeoJSONSource).setData({ type: 'Feature', geometry: geom, properties: {} } as any);
             map.flyTo({ center: dest, zoom: Math.max(map.getZoom(), 14), speed: 1.1, curve: 1.2 });
             if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'none');
+            if (map.getLayer('3d-landmarks')) map.setLayoutProperty('3d-landmarks', 'visibility', 'none');
           })
           .catch((e) => console.warn('routeTo fetch failed', e));
       } catch (e) {
@@ -993,28 +994,73 @@ useEffect(() => {
 
   // Isochrone rendering
   useEffect(() => {
-    const map = mapRef.current; if (!map || !map.isStyleLoaded()) return;
+    const map = mapRef.current; 
+    if (!map) return;
+    
     const cfg = isochrone || {};
+    
+    // Clean up existing isochrone layers
+    const cleanupIsochrones = () => {
+      try {
+        if (map.getLayer('isochrone-fill')) map.removeLayer('isochrone-fill');
+        if (map.getLayer('isochrone-outline')) map.removeLayer('isochrone-outline');
+        if (map.getSource('isochrones')) map.removeSource('isochrones');
+      } catch (e) {
+        console.warn('Failed to cleanup isochrones:', e);
+      }
+    };
+    
     if (!cfg.enabled) {
-      if (map.getLayer('isochrone-fill')) map.removeLayer('isochrone-fill');
-      if (map.getLayer('isochrone-outline')) map.removeLayer('isochrone-outline');
-      if (map.getSource('isochrones')) map.removeSource('isochrones');
+      cleanupIsochrones();
+      // Re-show 3D buildings when isochrone is disabled
+      if (map.getLayer('3d-buildings') && !directionsEnabled) {
+        map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+      }
+      if (map.getLayer('3d-landmarks') && !directionsEnabled) {
+        map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
+      }
       return;
     }
-    const origin: [number, number] = selected?.coords || (map.getCenter().toArray() as [number, number]);
-    const mins = (cfg.minutes && cfg.minutes.length ? cfg.minutes : [10, 20, 30]);
-    const contours = mins.join(',');
-    const profile = cfg.profile || 'driving';
-    const accessToken = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
-    const url = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${origin[0]},${origin[1]}?contours_minutes=${contours}&polygons=true&denoise=1&access_token=${accessToken}`;
-    fetch(url)
-      .then((r) => r.json())
-      .then((geo) => {
-        if (!geo || !geo.features) return;
-        if (map.getSource('isochrones')) {
-          (map.getSource('isochrones') as mapboxgl.GeoJSONSource).setData(geo);
-        } else {
+    
+    // Wait for style to load before adding isochrones
+    const addIsochrones = () => {
+      if (!map.isStyleLoaded()) {
+        map.once('style.load', addIsochrones);
+        return;
+      }
+      
+      // Hide 3D buildings when isochrones are enabled
+      if (map.getLayer('3d-buildings')) {
+        map.setLayoutProperty('3d-buildings', 'visibility', 'none');
+      }
+      if (map.getLayer('3d-landmarks')) {
+        map.setLayoutProperty('3d-landmarks', 'visibility', 'none');
+      }
+      
+      const origin: [number, number] = selected?.coords || (map.getCenter().toArray() as [number, number]);
+      const mins = (cfg.minutes && cfg.minutes.length ? cfg.minutes : [10, 20, 30]);
+      const contours = mins.join(',');
+      const profile = cfg.profile || 'driving';
+      const accessToken = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
+      
+      if (!accessToken) {
+        console.warn('No access token available for isochrone');
+        return;
+      }
+      
+      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/${origin[0]},${origin[1]}?contours_minutes=${contours}&polygons=true&denoise=1&access_token=${accessToken}`;
+      
+      fetch(url)
+        .then((r) => r.json())
+        .then((geo) => {
+          if (!geo || !geo.features || !map.isStyleLoaded()) return;
+          
+          // Clean up existing first
+          cleanupIsochrones();
+          
+          // Add new isochrone data
           map.addSource('isochrones', { type: 'geojson', data: geo });
+          
           map.addLayer({
             id: 'isochrone-fill',
             type: 'fill',
@@ -1031,6 +1077,7 @@ useEffect(() => {
               'fill-opacity': 0.8
             }
           });
+          
           map.addLayer({
             id: 'isochrone-outline',
             type: 'line',
@@ -1041,10 +1088,16 @@ useEffect(() => {
               'line-opacity': 0.8
             }
           });
-        }
-      })
-      .catch((e) => console.warn('Isochrone fetch failed', e));
-  }, [isochrone?.enabled, isochrone?.profile, JSON.stringify(isochrone?.minutes), selected, token]);
+        })
+        .catch((e) => console.warn('Isochrone fetch failed', e));
+    };
+    
+    addIsochrones();
+    
+    return () => {
+      cleanupIsochrones();
+    };
+  }, [isochrone?.enabled, isochrone?.profile, JSON.stringify(isochrone?.minutes), selected, token, directionsEnabled]);
 
   // Directions control toggle with robust fallback
   useEffect(() => {
@@ -1069,6 +1122,7 @@ useEffect(() => {
       if (directionsEnabled) {
         // Hide 3D while routing for clarity
         if (map.getLayer('3d-buildings')) map.setLayoutProperty('3d-buildings', 'visibility', 'none');
+        if (map.getLayer('3d-landmarks')) map.setLayoutProperty('3d-landmarks', 'visibility', 'none');
         try {
           // Some builds require global mapping
           ;(globalThis as any).mapboxgl = mapboxgl;
@@ -1114,7 +1168,12 @@ useEffect(() => {
         }
         removeFallback();
         // Re-show 3D if Isochrones isn't active
-        if (map.getLayer('3d-buildings') && !(isochrone?.enabled)) map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+        if (map.getLayer('3d-buildings') && !(isochrone?.enabled)) {
+          map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+        }
+        if (map.getLayer('3d-landmarks') && !(isochrone?.enabled)) {
+          map.setLayoutProperty('3d-landmarks', 'visibility', 'visible');
+        }
       }
     })();
 
