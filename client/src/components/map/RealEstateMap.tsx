@@ -503,10 +503,15 @@ useEffect(() => {
                     id: fid.toString(),
                     coords: [centroid[0], centroid[1]],
                     name: closestFeature.properties?.name || `Building ${fid}`,
-                    price: Math.floor(Math.random() * 2000000) + 800000,
+                    community: "Dubai", // Default community
+                    estimatedValueAED: Math.floor(Math.random() * 2000000) + 800000,
                     pricePerSqft: Math.floor(Math.random() * 800) + 600,
-                    yield: Math.round((Math.random() * 4 + 5) * 10) / 10,
-                    score: Math.floor(Math.random() * 30) + 70
+                    rentYield: Math.round((Math.random() * 4 + 5) * 10) / 10,
+                    investmentScore: Math.floor(Math.random() * 30) + 70,
+                    priceTrend: Array.from({ length: 12 }).map((_, i) => ({
+                      month: new Date(2024, i, 1).toLocaleString('en', { month: 'short' }),
+                      value: Math.floor(Math.random() * 1000) + 1500
+                    }))
                   };
                   onSelect(propertyPoint);
                 }
@@ -951,10 +956,22 @@ useEffect(() => {
     }
 
     return () => {
-      if (!map) return;
-      if (map.getLayer(symbolId)) try { map.removeLayer(symbolId); } catch {}
-      if (map.getLayer(bubbleId)) try { map.removeLayer(bubbleId); } catch {}
-      if (map.getSource(srcId)) try { map.removeSource(srcId); } catch {}
+      if (!map || !map.getStyle()) return;
+      try {
+        if (map.getLayer(symbolId)) map.removeLayer(symbolId);
+      } catch (e) {
+        console.warn('Failed to remove symbol layer:', e);
+      }
+      try {
+        if (map.getLayer(bubbleId)) map.removeLayer(bubbleId);
+      } catch (e) {
+        console.warn('Failed to remove bubble layer:', e);
+      }
+      try {
+        if (map.getSource(srcId)) map.removeSource(srcId);
+      } catch (e) {
+        console.warn('Failed to remove source:', e);
+      }
     };
   }, [JSON.stringify(amenities), mapStyle]);
 
