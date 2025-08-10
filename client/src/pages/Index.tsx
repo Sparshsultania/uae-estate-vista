@@ -46,6 +46,17 @@ const Index: React.FC = () => {
 
   // Directions and routing
   const [directionsEnabled, setDirectionsEnabled] = useState(false);
+  
+  // Isochrone settings
+  const [isochroneSettings, setIsochroneSettings] = useState<{
+    enabled: boolean;
+    profile: 'driving' | 'walking' | 'cycling';
+    minutes: number[];
+  }>({
+    enabled: false,
+    profile: 'driving',
+    minutes: [10, 20, 30]
+  });
 
   // POI handling
   const [selectedPOI, setSelectedPOI] = useState<POIDetails | null>(null);
@@ -260,6 +271,22 @@ const Index: React.FC = () => {
               <Switch id="toggle-yield" checked={showYieldHeat} onCheckedChange={setShowYieldHeat} />
               <label htmlFor="toggle-yield" className="text-sm cursor-pointer">Yield heat</label>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="toggle-directions" 
+                checked={directionsEnabled} 
+                onCheckedChange={setDirectionsEnabled} 
+              />
+              <label htmlFor="toggle-directions" className="text-sm cursor-pointer">Directions</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="toggle-isochrone" 
+                checked={isochroneSettings.enabled} 
+                onCheckedChange={(checked) => setIsochroneSettings(prev => ({ ...prev, enabled: checked }))} 
+              />
+              <label htmlFor="toggle-isochrone" className="text-sm cursor-pointer">Travel time zones</label>
+            </div>
           </div>
         </div>
       </header>
@@ -291,6 +318,7 @@ const Index: React.FC = () => {
               mapStyle={mapStyle}
               flyTo={flyTo || undefined}
               directionsEnabled={directionsEnabled}
+              isochrone={isochroneSettings}
               amenities={amenitiesSB.results}
               onPOISelect={handlePOISelect}
             />
