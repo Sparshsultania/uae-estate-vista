@@ -1184,50 +1184,126 @@ useEffect(() => {
             return;
           }
           
-          // Create demo amenities around Dubai for visualization
+          // Search for specific well-known places in Dubai using POI types
           const centerLng = (bbox[0] + bbox[2]) / 2;
           const centerLat = (bbox[1] + bbox[3]) / 2;
-          const radius = Math.min((bbox[2] - bbox[0]) / 4, (bbox[3] - bbox[1]) / 4);
           
-          console.log('Generating amenities around center:', centerLng, centerLat, 'radius:', radius);
+          console.log('Searching for real amenities using POI types...');
           
-          const testAmenities = [
-            // Restaurants (Red)
-            { category: 'restaurant', name: 'Downtown Restaurant', coordinates: [centerLng + radius * 0.5, centerLat + radius * 0.3] },
-            { category: 'restaurant', name: 'Marina Dining', coordinates: [centerLng - radius * 0.4, centerLat + radius * 0.2] },
-            { category: 'restaurant', name: 'Mall Food Court', coordinates: [centerLng + radius * 0.2, centerLat - radius * 0.4] },
-            // Cafes (Orange)
-            { category: 'cafe', name: 'Coffee Corner', coordinates: [centerLng - radius * 0.3, centerLat - radius * 0.3] },
-            { category: 'cafe', name: 'City Cafe', coordinates: [centerLng + radius * 0.4, centerLat + radius * 0.1] },
-            // Schools (Blue)
-            { category: 'school', name: 'Dubai School', coordinates: [centerLng - radius * 0.5, centerLat + radius * 0.4] },
-            { category: 'school', name: 'International Academy', coordinates: [centerLng + radius * 0.3, centerLat - radius * 0.2] },
-            // Hospitals (Dark Red)
-            { category: 'hospital', name: 'City Hospital', coordinates: [centerLng - radius * 0.2, centerLat + radius * 0.5] },
-            { category: 'hospital', name: 'Medical Center', coordinates: [centerLng + radius * 0.5, centerLat - radius * 0.3] },
-            // Banks (Purple)
-            { category: 'bank', name: 'Emirates Bank', coordinates: [centerLng + radius * 0.1, centerLat + radius * 0.4] },
-            { category: 'bank', name: 'National Bank', coordinates: [centerLng - radius * 0.4, centerLat - radius * 0.1] },
-            // Shopping (Pink)
-            { category: 'shopping_mall', name: 'City Mall', coordinates: [centerLng + radius * 0.3, centerLat + radius * 0.2] },
-            { category: 'shopping_mall', name: 'Shopping Center', coordinates: [centerLng - radius * 0.2, centerLat - radius * 0.4] }
-          ].map(amenity => ({
-            geometry: {
-              type: 'Point',
-              coordinates: amenity.coordinates
-            },
-            properties: {
-              category: amenity.category,
-              name: amenity.name,
-              address: `${amenity.name}, Dubai, UAE`
-            }
-          }));
+          const amenityPromises = [
+            // Search for POIs with different types
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/poi.json?proximity=${centerLng},${centerLat}&bbox=${bbox.join(',')}&limit=20&types=poi&access_token=${accessToken}`)
+              .then(res => res.json())
+              .then(data => {
+                console.log('POI search results:', data.features?.length || 0);
+                return data.features?.map((feature: any) => {
+                  // Determine category based on place name content
+                  const name = (feature.text || feature.place_name || '').toLowerCase();
+                  let category = 'other';
+                  
+                  if (name.includes('restaurant') || name.includes('dining') || name.includes('food') || name.includes('kitchen') || name.includes('grill')) {
+                    category = 'restaurant';
+                  } else if (name.includes('coffee') || name.includes('cafe') || name.includes('starbucks') || name.includes('costa')) {
+                    category = 'cafe';
+                  } else if (name.includes('school') || name.includes('university') || name.includes('college') || name.includes('academy')) {
+                    category = 'school';
+                  } else if (name.includes('hospital') || name.includes('clinic') || name.includes('medical') || name.includes('health')) {
+                    category = 'hospital';
+                  } else if (name.includes('bank') || name.includes('atm') || name.includes('finance') || name.includes('emirates nbd') || name.includes('adcb')) {
+                    category = 'bank';
+                  } else if (name.includes('mall') || name.includes('shopping') || name.includes('retail') || name.includes('store') || name.includes('market')) {
+                    category = 'shopping_mall';
+                  }
+                  
+                  return {
+                    geometry: feature.geometry,
+                    properties: {
+                      category,
+                      name: feature.text || feature.place_name,
+                      address: feature.place_name,
+                      mapbox_id: feature.id
+                    }
+                  };
+                }).filter((amenity: any) => amenity.properties.category !== 'other') || [];
+              })
+              .catch(error => {
+                console.error('POI search failed:', error);
+                return [];
+              }),
+              
+            // Also try searching for addresses to find more results
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/dubai.json?proximity=${centerLng},${centerLat}&bbox=${bbox.join(',')}&limit=15&types=address,poi,place&access_token=${accessToken}`)
+              .then(res => res.json())
+              .then(data => {
+                console.log('Dubai area search results:', data.features?.length || 0);
+                return data.features?.filter((feature: any) => {
+                  const name = (feature.text || feature.place_name || '').toLowerCase();
+                  return (feature.properties?.category || 
+                          name.includes('restaurant') || name.includes('cafe') || 
+                          name.includes('school') || name.includes('hospital') ||
+                          name.includes('bank') || name.includes('mall'));
+                }).map((feature: any) => {
+                  const name = (feature.text || feature.place_name || '').toLowerCase();
+                  let category = 'restaurant'; // Default
+                  
+                  if (name.includes('coffee') || name.includes('cafe')) category = 'cafe';
+                  else if (name.includes('school') || name.includes('university')) category = 'school';
+                  else if (name.includes('hospital') || name.includes('clinic')) category = 'hospital';
+                  else if (name.includes('bank') || name.includes('atm')) category = 'bank';
+                  else if (name.includes('mall') || name.includes('shopping')) category = 'shopping_mall';
+                  
+                  return {
+                    geometry: feature.geometry,
+                    properties: {
+                      category,
+                      name: feature.text || feature.place_name,
+                      address: feature.place_name,
+                      mapbox_id: feature.id
+                    }
+                  };
+                }) || [];
+              })
+              .catch(error => {
+                console.error('Dubai area search failed:', error);
+                return [];
+              })
+          ];
           
-          console.log('Generated', testAmenities.length, 'test amenities around center point');
+          const allAmenities = (await Promise.all(amenityPromises)).flat();
+          console.log('Total authentic amenities found:', allAmenities.length);
           
-          // Display the test amenities immediately
-          console.log('Displaying', testAmenities.length, 'amenities on map');
-          displayAmenitiesOnMap(testAmenities);
+          if (allAmenities.length > 0) {
+            // Remove duplicates based on coordinates
+            const uniqueAmenities = allAmenities.filter((amenity, index, arr) => {
+              const coords = amenity.geometry.coordinates;
+              return index === arr.findIndex(a => 
+                Math.abs(a.geometry.coordinates[0] - coords[0]) < 0.001 &&
+                Math.abs(a.geometry.coordinates[1] - coords[1]) < 0.001
+              );
+            });
+            
+            console.log('Unique authentic amenities:', uniqueAmenities.length);
+            console.log('Sample real amenities:', uniqueAmenities.slice(0, 3).map(a => ({ 
+              name: a.properties.name, 
+              category: a.properties.category 
+            })));
+            
+            displayAmenitiesOnMap(uniqueAmenities);
+          } else {
+            console.warn('No authentic amenities found in this travel zone');
+            
+            // Show user-friendly notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+              position: fixed; top: 80px; right: 20px; z-index: 1000;
+              background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px;
+              border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              max-width: 320px; font-size: 14px; color: #92400e; font-weight: 500;
+            `;
+            notification.innerHTML = '⚠️ No amenities found in this specific travel zone. Try selecting a larger travel time or different location.';
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 5000);
+          }
         } catch (error) {
           console.error('Failed to fetch amenities in isochrone:', error);
           console.error('Error stack:', error.stack);
