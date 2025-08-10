@@ -182,8 +182,8 @@ const Index: React.FC = () => {
               <div className="flex items-center gap-2 ml-auto">
                 <Button size="sm" onClick={() => mapRef.current?.startDrawPolygon()}>Draw area</Button>
                 <Button size="sm" variant="secondary" onClick={() => mapRef.current?.clearDraw()}>Clear</Button>
-                <Separator orientation="vertical" className="h-6" />
-                <div className="flex items-center gap-2">
+                <Separator orientation="vertical" className="h-6 hidden md:block" />
+                <div className="hidden md:flex items-center gap-2">
                   <Switch id="toggle-iso" checked={isoEnabled} onCheckedChange={setIsoEnabled} />
                   <label htmlFor="toggle-iso" className="text-sm">Isochrones</label>
                   <select
@@ -207,8 +207,8 @@ const Index: React.FC = () => {
                     <option value="15-30-45">15 / 30 / 45 min</option>
                   </select>
                 </div>
-                <Separator orientation="vertical" className="h-6" />
-                <div className="flex items-center gap-2">
+                <Separator orientation="vertical" className="h-6 hidden md:block" />
+                 <div className="hidden md:flex items-center gap-2">
                   <Switch id="toggle-dir" checked={directionsEnabled} onCheckedChange={setDirectionsEnabled} />
                   <label htmlFor="toggle-dir" className="text-sm">Directions</label>
                 </div>
