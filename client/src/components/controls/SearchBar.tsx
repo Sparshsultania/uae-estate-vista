@@ -72,7 +72,13 @@ const SearchBar: React.FC<Props> = ({ items, onSelect, token, onPlaceSelect }) =
             className="pl-9"
           />
         </div>
-        <Button variant="default" onClick={() => results[0] ? select(results[0]) : places[0] ? selectPlace(places[0]) : null}>
+        <Button variant="default" onClick={() => {
+          if (results[0]) {
+            select(results[0]);
+          } else if (places[0]) {
+            selectPlace(places[0]);
+          }
+        }}>
           Explore
         </Button>
       </div>

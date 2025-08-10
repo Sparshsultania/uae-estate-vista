@@ -31,26 +31,8 @@ const ValuationForm: React.FC<Props> = ({ token, onPlaceSelect, onCalculate }) =
   const [size, setSize] = React.useState<string>("");
   const [sizeUnit, setSizeUnit] = React.useState<'sqft' | 'sqm'>("sqft");
 
-  // Debounced geocoding: when building/community name changes, pan map to first result
-  React.useEffect(() => {
-    const q = building.trim();
-    const tk = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
-    if (!q || q.length < 3 || !tk) return;
-    const t = setTimeout(async () => {
-      try {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${tk}&autocomplete=true&limit=1&country=AE&types=place,locality,neighborhood,address,poi`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const f = Array.isArray(data?.features) && data.features[0];
-        if (f && onPlaceSelect) {
-          onPlaceSelect({ center: f.center as [number, number], bbox: f.bbox as any, name: f.place_name as string });
-        }
-      } catch (e) {
-        console.warn('Geocoding failed', e);
-      }
-    }, 600);
-    return () => clearTimeout(t);
-  }, [building, token, onPlaceSelect]);
+  // Disabled auto-geocoding to prevent map jumping while typing
+  // Users can use the main SearchBar for location search instead
 
   const handleCalc = (e: React.FormEvent) => {
     e.preventDefault();
