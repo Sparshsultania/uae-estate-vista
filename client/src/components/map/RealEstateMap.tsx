@@ -1015,9 +1015,17 @@ useEffect(() => {
     
     if (!cfg.enabled) {
       cleanupIsochrones();
-      // Clean up amenities too
-      if (map.getLayer('isochrone-amenities')) map.removeLayer('isochrone-amenities');
-      if (map.getSource('isochrone-amenities')) map.removeSource('isochrone-amenities');
+      // Clean up all category-specific amenity layers
+      const categories = [
+        'restaurant', 'cafe', 'school', 'hospital', 'pharmacy', 
+        'bank', 'gas_station', 'shopping_mall', 'gym', 'park',
+        'metro_station', 'bus_station', 'atm', 'grocery'
+      ];
+      categories.forEach(category => {
+        if (map.getLayer(`amenities-${category}`)) map.removeLayer(`amenities-${category}`);
+        if (map.getLayer(`amenities-${category}-labels`)) map.removeLayer(`amenities-${category}-labels`);
+        if (map.getSource(`amenities-${category}`)) map.removeSource(`amenities-${category}`);
+      });
       // Always keep 3D buildings visible - user preference
       if (map.getLayer('3d-buildings')) {
         map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
@@ -1197,52 +1205,86 @@ useEffect(() => {
         return [minLng, minLat, maxLng, maxLat];
       };
       
-      // Function to display amenities on map
+      // Function to display amenities on map with category clustering
       const displayAmenitiesOnMap = (amenities: any[]) => {
-        const amenityGeoJSON = {
-          type: 'FeatureCollection',
-          features: amenities.map(amenity => ({
-            type: 'Feature',
-            geometry: amenity.geometry,
-            properties: {
-              category: amenity.properties.category,
-              name: amenity.properties.name,
-              address: amenity.properties.address,
-              icon: getCategoryIcon(amenity.properties.category)
-            }
-          }))
-        };
+        // Group amenities by category
+        const categoryGroups = amenities.reduce((groups, amenity) => {
+          const category = amenity.properties.category;
+          if (!groups[category]) groups[category] = [];
+          groups[category].push(amenity);
+          return groups;
+        }, {} as { [key: string]: any[] });
         
         // Remove existing amenity layers
-        if (map.getLayer('isochrone-amenities')) map.removeLayer('isochrone-amenities');
-        if (map.getSource('isochrone-amenities')) map.removeSource('isochrone-amenities');
-        
-        // Add amenity source and layer
-        map.addSource('isochrone-amenities', {
-          type: 'geojson',
-          data: amenityGeoJSON as any
+        Object.keys(categoryGroups).forEach(category => {
+          if (map.getLayer(`amenities-${category}`)) map.removeLayer(`amenities-${category}`);
+          if (map.getSource(`amenities-${category}`)) map.removeSource(`amenities-${category}`);
         });
         
-        map.addLayer({
-          id: 'isochrone-amenities',
-          type: 'symbol',
-          source: 'isochrone-amenities',
-          layout: {
-            'icon-image': ['get', 'icon'],
-            'icon-size': 0.8,
-            'icon-allow-overlap': true,
-            'text-field': ['get', 'name'],
-            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-            'text-size': 11,
-            'text-offset': [0, 1.5],
-            'text-anchor': 'top',
-            'text-max-width': 8
-          },
-          paint: {
-            'text-color': '#333',
-            'text-halo-color': 'white',
-            'text-halo-width': 1
-          }
+        // Create separate layer for each category with distinct styling
+        Object.entries(categoryGroups).forEach(([category, categoryAmenities]) => {
+          const categoryGeoJSON = {
+            type: 'FeatureCollection',
+            features: categoryAmenities.map(amenity => ({
+              type: 'Feature',
+              geometry: amenity.geometry,
+              properties: {
+                category: amenity.properties.category,
+                name: amenity.properties.name,
+                address: amenity.properties.address,
+                icon: getCategoryIcon(amenity.properties.category)
+              }
+            }))
+          };
+          
+          // Add category-specific source
+          map.addSource(`amenities-${category}`, {
+            type: 'geojson',
+            data: categoryGeoJSON as any
+          });
+          
+          // Add category-specific layer with unique colors
+          const categoryColor = getCategoryColor(category);
+          
+          map.addLayer({
+            id: `amenities-${category}`,
+            type: 'circle',
+            source: `amenities-${category}`,
+            paint: {
+              'circle-radius': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                10, 6,
+                16, 10
+              ],
+              'circle-color': categoryColor,
+              'circle-opacity': 0.8,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-opacity': 0.9
+            }
+          });
+          
+          // Add labels for amenities
+          map.addLayer({
+            id: `amenities-${category}-labels`,
+            type: 'symbol',
+            source: `amenities-${category}`,
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+              'text-size': 10,
+              'text-offset': [0, 2],
+              'text-anchor': 'top',
+              'text-max-width': 10
+            },
+            paint: {
+              'text-color': categoryColor,
+              'text-halo-color': 'white',
+              'text-halo-width': 1.5
+            }
+          });
         });
       };
       
@@ -1265,6 +1307,27 @@ useEffect(() => {
           grocery: 'grocery-15'
         };
         return iconMap[category] || 'marker-15';
+      };
+      
+      // Helper to get category-specific colors
+      const getCategoryColor = (category: string) => {
+        const colorMap: { [key: string]: string } = {
+          restaurant: '#ef4444', // Red
+          cafe: '#f97316', // Orange  
+          school: '#3b82f6', // Blue
+          hospital: '#dc2626', // Dark red
+          pharmacy: '#059669', // Green
+          bank: '#7c3aed', // Purple
+          gas_station: '#eab308', // Yellow
+          shopping_mall: '#ec4899', // Pink
+          gym: '#06b6d4', // Cyan
+          park: '#22c55e', // Light green
+          metro_station: '#6366f1', // Indigo
+          bus_station: '#8b5cf6', // Violet
+          atm: '#7c3aed', // Purple
+          grocery: '#f59e0b' // Amber
+        };
+        return colorMap[category] || '#64748b';
       };
     };
     

@@ -338,8 +338,9 @@ const Index: React.FC = () => {
                       <Bike className="h-3 w-3" />
                     </Button>
                   </div>
-                  <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                    Amenities auto-discovered
+                  <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>Discovering amenities...</span>
                   </div>
                 </div>
               )}
