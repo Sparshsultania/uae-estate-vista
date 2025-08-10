@@ -152,7 +152,7 @@ const Index: React.FC = () => {
               <Switch id="toggle-yield" checked={showYieldHeat} onCheckedChange={setShowYieldHeat} />
               <label htmlFor="toggle-yield" className="text-sm">Yield heatmap</label>
             </div>
-            <div className="flex items-center gap-2 ml-4">
+            <div className="hidden md:flex items-center gap-2 ml-4">
               <label className="text-sm font-medium">Data Source:</label>
               <select 
                 value={dataSource} 
@@ -165,7 +165,7 @@ const Index: React.FC = () => {
                 <option value="dewa">DEWA</option>
               </select>
             </div>
-            <div className="flex items-center gap-2 ml-4">
+            <div className="hidden md:flex items-center gap-2 ml-4">
               <label className="text-sm font-medium">Map style:</label>
               <select
                 value={mapStyle}
