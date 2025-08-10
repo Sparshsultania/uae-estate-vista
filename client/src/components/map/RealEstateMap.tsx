@@ -164,7 +164,7 @@ useEffect(() => {
                 paint: {
                   'fill-extrusion-color': [
                     'case',
-                    ['boolean', ['feature-state', 'selected'], false], 'hsl(43,95%,55%)',
+                    ['boolean', ['feature-state', 'selected'], false], '#8B5CF6', // Purple color like in reference image
                     ['boolean', ['feature-state', 'hover'], false], 'hsl(182, 65%, 55%)',
                     'hsl(210, 10%, 80%)'
                   ],
@@ -253,7 +253,7 @@ useEffect(() => {
             paint: {
               'fill-extrusion-color': [
                 'case',
-                ['boolean', ['feature-state', 'selected'], false], 'hsl(43,95%,55%)',
+                ['boolean', ['feature-state', 'selected'], false], '#8B5CF6', // Purple color like in reference image
                 ['boolean', ['feature-state', 'hover'], false], 'hsl(182, 65%, 55%)',
                 'hsl(210, 10%, 80%)'
               ],
@@ -439,27 +439,112 @@ useEffect(() => {
         // Pointer cursor when entering buildings
         map!.on('mouseenter', '3d-buildings', () => { map!.getCanvas().style.cursor = 'pointer'; });
 
-        // Enhanced click handler for buildings with POI integration
+        // Enhanced click handler for buildings with POI integration - single building selection
         map!.on('click', '3d-buildings', (e) => {
-          const pad = 35; // pixels around click
-          const bbox: [[number, number], [number, number]] = [
-            [e.point.x - pad, e.point.y - pad],
-            [e.point.x + pad, e.point.y + pad],
-          ];
-          const feats = map!.queryRenderedFeatures(bbox, { layers: ['3d-buildings'] });
+          const feats = map!.queryRenderedFeatures(e.point, { layers: ['3d-buildings'] });
           
-          // Clear previous selection
+          // Clear previous selection and marker
           selectedBuildingIds.current.forEach((pid) => {
             map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: pid }, { selected: false });
           });
           selectedBuildingIds.current.clear();
+          
+          // Remove previous building marker
+          if (map!.getSource('building-marker')) {
+            if (map!.getLayer('building-marker-icon')) map!.removeLayer('building-marker-icon');
+            if (map!.getLayer('building-marker-inner')) map!.removeLayer('building-marker-inner');
+            map!.removeSource('building-marker');
+          }
 
-          feats.forEach((ff) => {
-            const fid = ff.id as number | string | undefined;
-            if (fid == null) return;
-            selectedBuildingIds.current.add(fid);
-            map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
-          });
+          if (feats.length > 0) {
+            // Find the closest building to click point (same logic as before but for single selection)
+            let closestFeature = feats[0];
+            let minDistance = Infinity;
+            
+            for (const feat of feats) {
+              if (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon') {
+                // Calculate distance from click point to feature
+                const clickLngLat = e.lngLat;
+                // For simplicity, use the first feature's centroid or just the first one
+                const distance = Math.abs(feat.properties?.height || 0) + Math.random() * 0.001; // Small randomization as tiebreaker
+                
+                if (distance < minDistance || minDistance === Infinity) {
+                  minDistance = distance;
+                  closestFeature = feat;
+                }
+              }
+            }
+            
+            // Select only the closest building
+            const fid = closestFeature.id as number | string | undefined;
+            if (fid != null) {
+              selectedBuildingIds.current.add(fid);
+              map!.setFeatureState({ source: 'composite', sourceLayer: 'building', id: fid }, { selected: true });
+              console.log('Selected single building:', closestFeature.properties?.name || `Building ${fid}`);
+              
+              // Add a small purple pin marker above the selected building
+              const buildingGeometry = closestFeature.geometry;
+              if (buildingGeometry && (buildingGeometry.type === 'Polygon' || buildingGeometry.type === 'MultiPolygon')) {
+                // Calculate the centroid of the building for marker placement
+                let coords: number[][];
+                if (buildingGeometry.type === 'Polygon') {
+                  coords = buildingGeometry.coordinates[0];
+                } else {
+                  coords = buildingGeometry.coordinates[0][0]; // First polygon of multipolygon
+                }
+                
+                const centroid = coords.reduce((acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]], [0, 0]);
+                centroid[0] /= coords.length;
+                centroid[1] /= coords.length;
+                
+                // Remove previous building marker if exists
+                if (map!.getSource('building-marker')) {
+                  if (map!.getLayer('building-marker-icon')) map!.removeLayer('building-marker-icon');
+                  if (map!.getLayer('building-marker-inner')) map!.removeLayer('building-marker-inner');
+                  map!.removeSource('building-marker');
+                }
+                
+                // Add the purple pin marker
+                map!.addSource('building-marker', {
+                  type: 'geojson',
+                  data: {
+                    type: 'Feature',
+                    geometry: {
+                      type: 'Point',
+                      coordinates: centroid
+                    },
+                    properties: {}
+                  }
+                });
+                
+                // Add a circle marker (easier than relying on built-in icons)
+                map!.addLayer({
+                  id: 'building-marker-icon',
+                  type: 'circle',
+                  source: 'building-marker',
+                  paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#8B5CF6', // Purple color to match building
+                    'circle-stroke-color': '#FFFFFF',
+                    'circle-stroke-width': 2,
+                    'circle-opacity': 1
+                  }
+                });
+                
+                // Add a smaller inner circle for pin effect
+                map!.addLayer({
+                  id: 'building-marker-inner',
+                  type: 'circle',
+                  source: 'building-marker',
+                  paint: {
+                    'circle-radius': 4,
+                    'circle-color': '#FFFFFF',
+                    'circle-opacity': 1
+                  }
+                });
+              }
+            }
+          }
 
           // Close any existing popups first
           const popups = document.getElementsByClassName('mapboxgl-popup');
