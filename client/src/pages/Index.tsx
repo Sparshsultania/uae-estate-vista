@@ -47,7 +47,7 @@ const Index: React.FC = () => {
   // Directions and routing
   const [directionsEnabled, setDirectionsEnabled] = useState(false);
   
-  // Isochrone settings
+  // Isochrone settings with realistic travel times
   const [isochroneSettings, setIsochroneSettings] = useState<{
     enabled: boolean;
     profile: 'driving' | 'walking' | 'cycling';
@@ -55,8 +55,22 @@ const Index: React.FC = () => {
   }>({
     enabled: false,
     profile: 'driving',
-    minutes: [10, 15, 30] // Better time intervals for smoother visualization
+    minutes: [5, 10, 20] // Realistic driving times: 5, 10, 20 minutes
   });
+
+  // Get realistic travel time configurations for different transport modes
+  const getRealisticTravelTimes = (profile: 'driving' | 'walking' | 'cycling') => {
+    switch (profile) {
+      case 'walking':
+        return [5, 10, 15]; // 5, 10, 15 minutes walking - reasonable walking distances
+      case 'cycling':
+        return [5, 10, 15]; // 5, 10, 15 minutes cycling - appropriate bike distances  
+      case 'driving':
+        return [5, 10, 20]; // 5, 10, 20 minutes driving - realistic car travel
+      default:
+        return [5, 10, 15];
+    }
+  };
 
   // POI handling
   const [selectedPOI, setSelectedPOI] = useState<POIDetails | null>(null);
@@ -178,11 +192,25 @@ const Index: React.FC = () => {
   };
 
   const handleIsochroneToggle = (enabled: boolean) => {
-    setIsochroneSettings(prev => ({ ...prev, enabled }));
+    setIsochroneSettings(prev => ({ 
+      ...prev, 
+      enabled,
+      // Update travel times based on current profile when enabling
+      minutes: enabled ? getRealisticTravelTimes(prev.profile) : prev.minutes
+    }));
     if (enabled && directionsEnabled) {
       // Disable directions when enabling isochrones
       setDirectionsEnabled(false);
     }
+  };
+
+  // Handle profile changes with appropriate travel times
+  const handleProfileChange = (profile: 'driving' | 'walking' | 'cycling') => {
+    setIsochroneSettings(prev => ({
+      ...prev,
+      profile,
+      minutes: getRealisticTravelTimes(profile)
+    }));
   };
 
   const handlePOISelect = async (coordinates: [number, number]) => {
@@ -306,31 +334,34 @@ const Index: React.FC = () => {
                     <Button
                       size="sm"
                       variant={isochroneSettings.profile === 'driving' ? 'default' : 'outline'}
-                      onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'driving' }))}
+                      onClick={() => handleProfileChange('driving')}
                       className="h-7 px-2"
+                      title="Driving: 5, 10, 20 min zones"
                     >
                       <Car className="h-3 w-3" />
                     </Button>
                     <Button
                       size="sm"
                       variant={isochroneSettings.profile === 'walking' ? 'default' : 'outline'}
-                      onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'walking' }))}
+                      onClick={() => handleProfileChange('walking')}
                       className="h-7 px-2"
+                      title="Walking: 5, 10, 15 min zones"
                     >
                       <PersonStanding className="h-3 w-3" />
                     </Button>
                     <Button
                       size="sm"
                       variant={isochroneSettings.profile === 'cycling' ? 'default' : 'outline'}
-                      onClick={() => setIsochroneSettings(prev => ({ ...prev, profile: 'cycling' }))}
+                      onClick={() => handleProfileChange('cycling')}
                       className="h-7 px-2"
+                      title="Cycling: 5, 10, 15 min zones"
                     >
                       <Bike className="h-3 w-3" />
                     </Button>
                   </div>
                   <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>Discovering amenities...</span>
+                    <span>{isochroneSettings.minutes.join(', ')} min zones • Discovering amenities...</span>
                   </div>
                 </div>
               )}
