@@ -54,11 +54,12 @@ export function BuildingImageGallery({
   
   console.log('BuildingImageGallery images received:', {
     streetViewUrl: images.streetViewUrl,
-    satelliteUrl: images.satelliteUrl,
     stockPhotos: images.stockPhotos?.length,
-    placesPhotos: images.placesPhotos?.length,
-    allImagesLength: allImages.length
+    placesPhotos: images.placesPhotos?.length
   });
+
+  console.log('Raw images object:', images);
+  console.log('Total images being added to gallery:', allImages.length);
 
   // Prioritize Google API images first
   if (images.streetViewUrl) {
@@ -89,8 +90,9 @@ export function BuildingImageGallery({
     );
   }
 
-  // Add stock photos as secondary options
-  if (images.stockPhotos?.length) {
+  // Only add stock photos if no Street View is available
+  if (!images.streetViewUrl && images.stockPhotos?.length) {
+    console.log('No Street View available, using stock photos as fallback');
     images.stockPhotos.forEach((url, index) => 
       allImages.push({ 
         url, 
