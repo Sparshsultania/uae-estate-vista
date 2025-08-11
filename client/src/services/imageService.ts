@@ -35,57 +35,55 @@ class ImageService {
   private googleMapsApiKey: string | null = null;
 
   constructor() {
-    // Get API key from environment or localStorage
-    this.googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 
-                           localStorage.getItem('GOOGLE_MAPS_API_KEY') || 
-                           null;
+    // Get API key from environment variables (Replit Secrets)
+    this.googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || null;
+    
+    // For development, also check if it's available server-side
+    if (!this.googleMapsApiKey && typeof window !== 'undefined') {
+      // The API key will be passed from the server via props or context
+      this.googleMapsApiKey = (window as any).GOOGLE_MAPS_API_KEY || null;
+    }
   }
 
   /**
-   * Get comprehensive building images using multiple API sources
+   * Get comprehensive building images using server-side API
    */
   async getBuildingImages(
     coordinates: [number, number], 
     buildingName?: string, 
     address?: string
   ): Promise<BuildingImageData> {
-    const [lng, lat] = coordinates;
-    const images: BuildingImageData = {};
-
     try {
-      // 1. Google Street View - Best for building exteriors
-      if (this.googleMapsApiKey) {
-        images.streetViewUrl = this.getGoogleStreetViewUrl(lat, lng);
-        images.satelliteUrl = this.getGoogleSatelliteUrl(lat, lng);
+      const response = await fetch('/api/images/building', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          coordinates,
+          buildingName,
+          address
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch building images: ${response.statusText}`);
       }
 
-      // 2. Try Google Places API for building photos
-      if (this.googleMapsApiKey && (buildingName || address)) {
-        try {
-          const placesPhotos = await this.getGooglePlacesPhotos(lat, lng, buildingName || address);
-          if (placesPhotos.length > 0) {
-            images.placesPhotos = placesPhotos;
-          }
-        } catch (error) {
-          console.log('Places API photos not available:', error);
-        }
-      }
-
-      // 3. Stock photos as fallback using building name or area
-      const stockPhotos = await this.getStockBuildingPhotos(buildingName, address);
-      if (stockPhotos.length > 0) {
-        images.stockPhotos = stockPhotos;
-      }
-
-      // 4. Ultimate fallback - generic Dubai building
-      images.fallbackImage = this.getDubaiFallbackImage();
+      const images = await response.json();
+      return images;
 
     } catch (error) {
       console.error('Error fetching building images:', error);
-      images.fallbackImage = this.getDubaiFallbackImage();
+      return {
+        stockPhotos: [
+          'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640',
+          'https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=640',
+          'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=640'
+        ],
+        fallbackImage: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640&h=640&fit=crop'
+      };
     }
-
-    return images;
   }
 
   /**
