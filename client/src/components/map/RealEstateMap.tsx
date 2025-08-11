@@ -920,30 +920,7 @@ useEffect(() => {
           const p = properties.find((pp) => pp.id === id);
           if (p && onSelect) onSelect(p);
 
-          // Popup
-          if (feat && feat.geometry.type === 'Point') {
-            const coords = (feat.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
-            const name = feat.properties?.name as string;
-            const price = feat.properties?.pricePerSqft as number;
-            const yieldPct = feat.properties?.rentYield as number;
-          // Enhanced quick popup
-          new mapboxgl.Popup({ 
-            closeButton: false, 
-            className: 'quick-popup',
-            offset: 25 
-          })
-            .setLngLat(coords)
-            .setHTML(`
-              <div class="p-2 text-sm space-y-1">
-                <div class="font-semibold text-primary">${name}</div>
-                <div class="text-xs text-muted-foreground flex justify-between">
-                  <span>AED ${price}/sqft</span>
-                  <span class="text-emerald-600">${yieldPct}% yield</span>
-                </div>
-              </div>
-            `)
-            .addTo(map!);
-          }
+          // Popup removed - using Google Places API and sidebar panel instead
         });
 
         // Initial overlays visibility
@@ -1825,43 +1802,7 @@ useEffect(() => {
       essential: true
     });
     
-    // Enhanced popup after zoom
-    setTimeout(() => {
-      const popup = new mapboxgl.Popup({ 
-        closeButton: true,
-        className: 'custom-popup',
-        maxWidth: '300px'
-      })
-        .setLngLat(selected.coords)
-        .setHTML(`
-          <div class="rounded-md overflow-hidden">
-            <img src="${selected.imageUrl || '/images/buildings/downtown.jpg'}" alt="${selected.name} photo" class="w-full h-32 object-cover" loading="lazy" />
-            <div class="p-4 space-y-3">
-              <div class="font-bold text-lg text-primary">${selected.name}</div>
-              <div class="text-sm text-muted-foreground">${selected.community}</div>
-              <div class="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <div class="font-medium">Value</div>
-                  <div class="text-primary">AED ${selected.estimatedValueAED.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div class="font-medium">Per Sq.Ft</div>
-                  <div>AED ${selected.pricePerSqft}</div>
-                </div>
-                <div>
-                  <div class="font-medium">Yield</div>
-                  <div class="text-emerald-600">${selected.rentYield}%</div>
-                </div>
-                <div>
-                  <div class="font-medium">Score</div>
-                  <div class="text-amber-600">${selected.investmentScore}/100</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `)
-        .addTo(map);
-    }, 1500);
+    // Enhanced popup removed - using Google Places API and sidebar panel instead
   }, [selected]);
 
   const hasToken = !!(token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN'));
