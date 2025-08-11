@@ -108,31 +108,6 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
 
       {/* Building Images Gallery */}
       <div className="p-4 space-y-3">
-        {/* Debug info for image URLs */}
-        {process.env.NODE_ENV === 'development' && images && (
-          <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs space-y-1">
-            <div>Street View: {images.streetViewUrl ? '✓' : '✗'}</div>
-            {images.streetViewUrl && (
-              <div className="break-all">URL: {images.streetViewUrl}</div>
-            )}
-            <div>Stock Photos: {images.stockPhotos?.length || 0}</div>
-            
-            {/* Test Street View image directly */}
-            {images.streetViewUrl && (
-              <div className="mt-2">
-                <div className="text-xs font-semibold">Direct Test:</div>
-                <img 
-                  src={`${window.location.origin}${images.streetViewUrl}`}
-                  alt="Street View Test" 
-                  className="w-32 h-24 object-cover border"
-                  onLoad={() => console.log('✓ Direct Street View test loaded successfully')}
-                  onError={(e) => console.error('✗ Direct Street View test failed:', e)}
-                />
-              </div>
-            )}
-          </div>
-        )}
-        
         <BuildingImageGallery
           images={images}
           isLoading={imagesLoading}

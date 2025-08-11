@@ -148,14 +148,16 @@ useEffect(() => {
       // Force and ensure 3D perspective right after the map fully loads
       map.on('load', () => {
         try {
-          if (map.getZoom() < 15) map.setZoom(15);
-          map.setPitch(60);
-          map.setBearing(45);
+          if (!map) return;
+          const m = map as mapboxgl.Map;
+          if (m.getZoom() < 15) m.setZoom(15);
+          m.setPitch(60);
+          m.setBearing(45);
           // Add 3D buildings layer if it's not present yet
-          if (!map.getLayer('3d-buildings')) {
-            const layers = map.getStyle().layers || [];
+          if (!m.getLayer('3d-buildings')) {
+            const layers = m.getStyle().layers || [];
             const labelLayerId = layers.find((l) => l.type === 'symbol' && (l.layout as any)?.['text-field'])?.id;
-            map.addLayer(
+            m.addLayer(
               {
                 id: '3d-buildings',
                 source: 'composite',
@@ -185,7 +187,7 @@ useEffect(() => {
               labelLayerId ? labelLayerId : undefined
             );
           }
-          map.setLayoutProperty('3d-buildings', 'visibility', 'visible');
+          m.setLayoutProperty('3d-buildings', 'visibility', 'visible');
         } catch {}
       });
 
@@ -1284,9 +1286,9 @@ useEffect(() => {
             document.body.appendChild(notification);
             setTimeout(() => notification.remove(), 5000);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to fetch amenities in isochrone:', error);
-          console.error('Error stack:', error.stack);
+          console.error('Error stack:', error?.stack);
         }
       };
       
@@ -1344,7 +1346,8 @@ useEffect(() => {
         });
         
         // Create separate layer for each category with distinct styling
-        Object.entries(categoryGroups).forEach(([category, categoryAmenities]) => {
+        const entries = Object.entries(categoryGroups) as [string, any[]][];
+        entries.forEach(([category, categoryAmenities]) => {
           console.log(`Creating layer for ${category} with ${categoryAmenities.length} amenities`);
           
           const categoryGeoJSON = {

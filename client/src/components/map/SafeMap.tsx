@@ -94,7 +94,7 @@ const SafeMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({
           }
 
           // Simple click handler without complex feature state
-          map.on('click', (e) => {
+          map?.on('click', (e) => {
             try {
               // Clear existing markers and popups
               document.querySelectorAll('.mapboxgl-popup').forEach(popup => popup.remove());
@@ -125,7 +125,7 @@ const SafeMap = React.forwardRef<RealEstateMapHandle, RealEstateMapProps>(({
 
               new mapboxgl.Marker(markerEl)
                 .setLngLat(clickCoords)
-                .addTo(map);
+                .addTo(map as mapboxgl.Map);
 
               // Trigger POI selection
               onPOISelect?.(clickCoords);

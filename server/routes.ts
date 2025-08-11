@@ -166,13 +166,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Valid coordinates [lng, lat] are required' });
       }
 
-      const [lng, lat] = coordinates;
+      const [lng, lat] = coordinates as [number, number];
       const images: any = {};
 
       if (googleApiKey) {
-        // Always provide the Google Street View URL since API is confirmed working
-        images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
-        console.log(`Building images response includes: streetView=${!!images.streetViewUrl}`);
+        // Compute a better Street View heading by finding the nearest panorama and pointing to the building
+        try {
+          const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${lat},${lng}&radius=80&key=${googleApiKey}`;
+          const metaRes = await fetch(metaUrl);
+          const meta = await metaRes.json();
+
+          const panoLat = meta?.location?.lat ?? lat;
+          const panoLng = meta?.location?.lng ?? lng;
+
+          const toRad = (d: number) => (d * Math.PI) / 180;
+          const toDeg = (r: number) => (r * 180) / Math.PI;
+          const bearing = (() => {
+            const φ1 = toRad(panoLat), φ2 = toRad(lat);
+            const λ1 = toRad(panoLng), λ2 = toRad(lng);
+            const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
+            const θ = Math.atan2(y, x);
+            return (toDeg(θ) + 360) % 360;
+          })();
+
+          images.streetViewUrl = `/api/images/streetview?lat=${panoLat}&lng=${panoLng}&heading=${Math.round(bearing)}`;
+        } catch (e) {
+          // Fallback to basic Street View at building center
+          images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
+        }
       }
 
       // Add curated Dubai stock photos as fallback
