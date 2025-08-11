@@ -17,6 +17,8 @@ import POIDetailsPanel, { type POIDetails } from "@/components/panels/POIDetails
 import PropertyDetailsPanel, { type PropertyData } from "@/components/panels/PropertyDetailsPanel";
 import usePOIData from "@/hooks/usePOIData";
 import { ApiKeySettings } from "@/components/settings/ApiKeySettings";
+import { BuildingImageGallery } from "@/components/images/BuildingImageGallery";
+import { useBuildingImages } from "@/hooks/useBuildingImages";
 
 function circlePolygon(center: [number, number], radiusMeters: number, points = 64): GeoJSON.Feature<GeoJSON.Polygon> {
   const [lng, lat] = center;
@@ -75,20 +77,28 @@ const Index: React.FC = () => {
 
   // POI handling
   const [selectedPOI, setSelectedPOI] = useState<POIDetails | null>(null);
-  const { fetchPOIDetails } = usePOIData();
+  const { fetchPOIDetails } = usePOIData(token);
 
   // Property details state
   const [selectedPropertyDetails, setSelectedPropertyDetails] = useState<PropertyData | null>(null);
 
-  // Amenities and filters
-  const [amenityCats, setAmenityCats] = useState<AmenityCategory[]>([]);
-  const [amenityRadius, setAmenityRadius] = useState<number>(1500);
-  const amenitiesSB = useSearchBoxAmenities({
-    coordinates: selected ? selected.coords as [number, number] : null,
-    categories: amenityCats,
-    radius: amenityRadius,
-    token: token,
-  });
+// Building images for selected property
+const { images: buildingImages, isLoading: buildingImagesLoading } = useBuildingImages({
+  coordinates: selectedPropertyDetails?.coordinates,
+  buildingName: selectedPropertyDetails?.name,
+  address: selectedPropertyDetails?.location,
+  enabled: !!selectedPropertyDetails,
+});
+
+// Amenities and filters
+const [amenityCats, setAmenityCats] = useState<AmenityCategory[]>([]);
+const [amenityRadius, setAmenityRadius] = useState<number>(1500);
+const amenitiesSB = useSearchBoxAmenities({
+  center: selected ? (selected.coords as [number, number]) : null,
+  categories: amenityCats,
+  radiusMeters: amenityRadius,
+  token: token,
+});
 
   const mapRef = useRef<RealEstateMapHandle>(null);
 
@@ -482,7 +492,18 @@ const Index: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-              
+
+              <Card>
+                <CardContent className="pt-3">
+                  <BuildingImageGallery
+                    images={buildingImages}
+                    isLoading={buildingImagesLoading}
+                    buildingName={selectedPropertyDetails.name}
+                    address={selectedPropertyDetails.location}
+                  />
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">

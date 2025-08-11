@@ -22,7 +22,7 @@ export type RealEstateMapProps = {
   searchArea?: GeoJSON.Feature<GeoJSON.Polygon> | null;
   onAreaChange?: (area: GeoJSON.Feature<GeoJSON.Polygon> | null) => void;
   mapStyle?: string; // e.g. mapbox://styles/mapbox/streets-v12
-  flyTo?: { center: [number, number]; zoom?: number };
+  flyTo?: { center: [number, number]; zoom?: number; timestamp?: number };
   isochrone?: IsochroneSettings;
   directionsEnabled?: boolean;
   amenities?: AmenityResult[];

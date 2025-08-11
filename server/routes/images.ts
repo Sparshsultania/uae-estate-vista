@@ -164,7 +164,7 @@ export async function getBuildingImages(req: Request, res: Response) {
         const query = buildingName || address;
         try {
           const placesResponse = await fetch(
-            `http://localhost:5000/api/images/places-photos?lat=${lat}&lng=${lng}&query=${encodeURIComponent(query)}`
+            `http://localhost:5000/api/images/places-photos?lat=${lat}&lng=${lng}&query=${encodeURIComponent((query as string) || '')}`
           );
           const placesData = await placesResponse.json();
           if (placesData.photos && placesData.photos.length > 0) {

@@ -50,8 +50,8 @@ class ImageService {
    */
   async getBuildingImages(
     coordinates: [number, number], 
-    buildingName?: string, 
-    address?: string
+    buildingName: string = '', 
+    address: string = ''
   ): Promise<BuildingImageData> {
     try {
       const response = await fetch('/api/images/building', {
