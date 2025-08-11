@@ -90,37 +90,13 @@ export function BuildingImageGallery({
     );
   }
 
-  // Only add stock photos if no Street View is available
-  if (!images.streetViewUrl && images.stockPhotos?.length) {
-    console.log('No Street View available, using stock photos as fallback');
-    images.stockPhotos.forEach((url, index) => 
-      allImages.push({ 
-        url, 
-        type: 'stock', 
-        icon: <Building2 className="h-3 w-3" />, 
-        label: `Reference ${index + 1}` 
-      })
-    );
-  }
+  // No stock photos - only show images if Google Street View is available
 
-  if (images.fallbackImage && allImages.length === 0) {
-    allImages.push({ 
-      url: images.fallbackImage, 
-      type: 'fallback', 
-      icon: <Building2 className="h-3 w-3" />, 
-      label: 'Dubai Property' 
-    });
-  }
+  // No fallback images - only show Street View if available
 
+  // If no Google Street View images available, don't show image section at all
   if (allImages.length === 0) {
-    return (
-      <div className={`flex items-center justify-center h-48 bg-muted rounded-lg ${className}`}>
-        <div className="text-center text-muted-foreground">
-          <Camera className="h-8 w-8 mx-auto mb-2" />
-          <p className="text-sm">No images available</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const currentImage = allImages[selectedImageIndex];

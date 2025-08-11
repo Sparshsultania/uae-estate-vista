@@ -106,47 +106,40 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
         </div>
       </div>
 
-      {/* Building Images Gallery */}
-      <div className="p-4 space-y-3">
-        <BuildingImageGallery
-          images={images}
-          isLoading={imagesLoading}
-          buildingName={displayName}
-          address={displayAddress}
-        />
-      </div>
+      {/* Building Images Gallery - Only if Google Street View available */}
+      {images?.streetViewUrl && (
+        <div className="p-4 space-y-3">
+          <BuildingImageGallery
+            images={images}
+            isLoading={imagesLoading}
+            buildingName={displayName}
+            address={displayAddress}
+          />
+        </div>
+      )}
 
       <div className="p-4 space-y-6">
-        {/* Key Metrics */}
+        {/* Property Details Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4">
-            <div className="text-sm font-medium text-gray-600">Estimated Market Value</div>
-            <div className="text-2xl font-bold text-gray-900">AED</div>
-            <div className="text-2xl font-bold text-gray-900">{property.value.toLocaleString()}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm font-medium text-gray-600">Rent Yield</div>
-            <div className="text-3xl font-bold text-green-600">{property.yield}%</div>
-          </Card>
-        </div>
-
-        {/* Property Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm font-medium text-gray-600">Value</div>
-            <div className="text-lg font-bold">AED {property.value.toLocaleString()}</div>
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Location</div>
+            <div className="text-sm font-medium">{property.location || 'Dubai'}</div>
           </div>
-          <div>
-            <div className="text-sm font-medium text-gray-600">Per Sq.Ft</div>
-            <div className="text-lg font-bold">AED {property.pricePerSqFt}</div>
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Yield</div>
+            <div className="text-sm font-medium text-emerald-600">{property.yield}%</div>
           </div>
-          <div>
-            <div className="text-sm font-medium text-gray-600">Yield</div>
-            <div className="text-lg font-bold text-green-600">{property.yield}%</div>
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Score</div>
+            <div className="text-sm font-medium text-amber-600">{property.score}/100</div>
           </div>
-          <div>
-            <div className="text-sm font-medium text-gray-600">Score</div>
-            <div className="text-lg font-bold text-orange-600">{property.score}/100</div>
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Value</div>
+            <div className="text-sm font-medium text-primary">AED {property.value.toLocaleString()}</div>
+          </div>
+          <div className="space-y-1 col-span-2">
+            <div className="text-sm text-muted-foreground">Per Sq.Ft</div>
+            <div className="text-sm font-medium">AED {property.pricePerSqFt}</div>
           </div>
         </div>
 

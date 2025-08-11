@@ -197,14 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Add curated Dubai stock photos as fallback
-      images.stockPhotos = [
-        'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640',
-        'https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=640', 
-        'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=640'
-      ];
-
-      images.fallbackImage = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640&h=640&fit=crop';
+      // No stock photos - only authentic Google Street View images
 
       res.json(images);
 
