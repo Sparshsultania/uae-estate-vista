@@ -73,12 +73,7 @@ class ImageService {
     } catch (error) {
       console.error('Error fetching building images:', error);
       return {
-        stockPhotos: [
-          'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640',
-          'https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=640',
-          'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=640'
-        ],
-        fallbackImage: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640&h=640&fit=crop'
+        // No fallback images - return empty result
       };
     }
   }
@@ -210,71 +205,33 @@ class ImageService {
       );
 
       if (!response.ok) {
-        // Fallback to Pexels if Unsplash fails
-        return this.getPexelsBuildingPhotos(buildingName || '', address || '');
+        // No fallback photos
+        return [];
       }
 
       const data = await response.json();
       return data.results?.map((photo: any) => photo.urls.regular) || [];
 
     } catch (error) {
-      console.log('Unsplash API not configured, using fallback');
-      return this.getPexelsBuildingPhotos(buildingName || '', address || '');
+      console.log('Unsplash API not configured, no fallback');
+      return [];
     }
   }
 
   /**
-   * Pexels API fallback for stock photos
+   * No stock photos - only authentic Google Street View images
    */
   private async getPexelsBuildingPhotos(buildingName?: string, address?: string): Promise<string[]> {
-    // For now, return curated Dubai building URLs as static fallback
-    // In production, implement Pexels API integration
-    return [
-      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640', // Dubai Marina
-      'https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=640', // Dubai skyline
-      'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=640'  // Modern Dubai building
-    ];
+    // No stock photos returned
+    return [];
   }
 
   /**
-   * Community/neighborhood stock photos
+   * No community stock photos - only authentic Google data
    */
   private async getStockCommunityPhotos(areaName: string): Promise<string[]> {
-    // Map common Dubai areas to curated stock photos
-    const areaPhotos: { [key: string]: string[] } = {
-      'Dubai Marina': [
-        'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640',
-        'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=640'
-      ],
-      'Downtown Dubai': [
-        'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=640',
-        'https://images.unsplash.com/photo-1590668991969-32ad5c896b8b?w=640'
-      ],
-      'Palm Jumeirah': [
-        'https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=640',
-        'https://images.unsplash.com/photo-1529260830199-42c24126f198?w=640'
-      ],
-      'Business Bay': [
-        'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=640',
-        'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=640'
-      ]
-    };
-
-    // Try exact match first, then partial match
-    let photos = areaPhotos[areaName];
-    if (!photos) {
-      for (const [area, urls] of Object.entries(areaPhotos)) {
-        if (areaName.toLowerCase().includes(area.toLowerCase()) || 
-            area.toLowerCase().includes(areaName.toLowerCase())) {
-          photos = urls;
-          break;
-        }
-      }
-    }
-
-    return photos || [
-      'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640' // Default Dubai
-    ];
+    // No stock photos returned
+    return [];
   }
 
   /**
@@ -311,21 +268,17 @@ class ImageService {
   }
 
   /**
-   * Generic Dubai fallback image
+   * No fallback images - only authentic Google Street View
    */
   private getDubaiFallbackImage(): string {
-    return 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640&h=640&fit=crop';
+    return '';
   }
 
   /**
-   * Get the best available image from the building image data
+   * Get the best available image from the building image data - only Street View
    */
   getBestBuildingImage(images: BuildingImageData): string {
-    return images.placesPhotos?.[0] || 
-           images.streetViewUrl || 
-           images.stockPhotos?.[0] || 
-           images.fallbackImage || 
-           this.getDubaiFallbackImage();
+    return images.streetViewUrl || '';
   }
 
   /**
