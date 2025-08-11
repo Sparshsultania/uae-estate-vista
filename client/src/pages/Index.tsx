@@ -121,8 +121,8 @@ const amenitiesSB = useSearchBoxAmenities({
       propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
       bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
       size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
-      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
-      imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
+      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable'
+      // No stock images - only authentic Google Street View images
     };
     
     // Set property data immediately
@@ -169,8 +169,8 @@ const amenitiesSB = useSearchBoxAmenities({
       propertyType: Math.random() > 0.5 ? 'Apartment' : 'Villa',
       bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
       size: Math.floor(Math.random() * 2000) + 800, // 800-2800 sqft
-      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable',
-      imageUrl: `https://picsum.photos/400/200?random=${timestamp}`
+      marketTrend: Math.random() > 0.3 ? 'Increasing' : 'Stable'
+      // No stock images - only authentic Google Street View images
     };
     setSelectedPropertyDetails(propertyData);
     setSearchArea(circlePolygon(pl.center, 1500));
