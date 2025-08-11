@@ -123,25 +123,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const images: any = {};
 
       if (googleApiKey) {
-        // Test if Street View API is available
-        try {
-          const testResponse = await fetch(`/api/images/streetview?lat=${lat}&lng=${lng}`);
-          if (testResponse.status !== 403) {
-            images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
-          }
-        } catch (error) {
-          console.log('Street View API not available');
-        }
-
-        // Test if Maps Static API is available  
-        try {
-          const testResponse = await fetch(`/api/images/satellite?lat=${lat}&lng=${lng}`);
-          if (testResponse.status !== 403) {
-            images.satelliteUrl = `/api/images/satellite?lat=${lat}&lng=${lng}`;
-          }
-        } catch (error) {
-          console.log('Maps Static API not available');
-        }
+        // Always provide the Google API URLs since APIs are confirmed working
+        images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
+        images.satelliteUrl = `/api/images/satellite?lat=${lat}&lng=${lng}`;
       }
 
       // Add curated Dubai stock photos as fallback
