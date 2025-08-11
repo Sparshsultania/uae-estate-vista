@@ -27,30 +27,23 @@ const usePOIData = (token: string) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPOIDetails = useCallback(async (coordinates: [number, number]): Promise<POIDetails | null> => {
-    if (!token) {
-      setError('Mapbox token is required');
-      return null;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
-      // Use Mapbox Geocoding API to get place details at clicked coordinates
+      // Use Google Places API instead of Mapbox geocoding to get place details
       const [lng, lat] = coordinates;
-      const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&types=poi,address&limit=1`;
       
-      const geocodeResponse = await fetch(geocodeUrl);
+      const googleResponse = await fetch(`/api/places/nearby?lat=${lat}&lng=${lng}&radius=50`);
       
-      if (!geocodeResponse.ok) {
-        throw new Error(`Geocoding API error: ${geocodeResponse.status}`);
+      if (!googleResponse.ok) {
+        throw new Error(`Google Places API error: ${googleResponse.status}`);
       }
 
-      const geocodeData = await geocodeResponse.json();
-      const features = geocodeData.features;
+      const googleData = await googleResponse.json();
 
-      if (!features || features.length === 0) {
-        // If no POI found, create a basic location entry
+      if (!googleData.buildings || googleData.buildings.length === 0) {
+        // If no POI found, create a basic location entry using Google data
         return {
           id: `location_${Date.now()}`,
           name: 'Location',
@@ -61,14 +54,29 @@ const usePOIData = (token: string) => {
         };
       }
 
-      const poi = features[0] as MapboxPOI;
+      const poi = googleData.buildings[0]; // Use Google Places data
       
-      // Extract category from place name or properties
-      const getCategory = (poi: MapboxPOI): string => {
-        if (poi.properties?.category) return poi.properties.category;
+      // Extract category from Google Places data
+      const getCategory = (poi: any): string => {
+        if (poi.types && poi.types.length > 0) {
+          const primaryType = poi.types[0];
+          switch (primaryType) {
+            case 'restaurant': case 'food': case 'meal_takeaway': return 'Restaurant';
+            case 'lodging': case 'hotel': return 'Hotel';
+            case 'shopping_mall': case 'store': return 'Shopping';
+            case 'hospital': case 'clinic': case 'pharmacy': return 'Healthcare';
+            case 'school': case 'university': return 'Education';
+            case 'bank': case 'atm': return 'Bank';
+            case 'gas_station': return 'Gas Station';
+            case 'mosque': case 'church': case 'place_of_worship': return 'Religious';
+            case 'park': return 'Park';
+            case 'establishment': case 'point_of_interest': return 'Building';
+            default: return 'Point of Interest';
+          }
+        }
         
-        // Parse category from place_name
-        const placeName = poi.place_name.toLowerCase();
+        // Parse category from name as fallback
+        const placeName = (poi.name || '').toLowerCase();
         if (placeName.includes('restaurant') || placeName.includes('cafe') || placeName.includes('food')) return 'Restaurant';
         if (placeName.includes('hotel')) return 'Hotel';
         if (placeName.includes('shopping') || placeName.includes('mall')) return 'Shopping';
@@ -84,9 +92,9 @@ const usePOIData = (token: string) => {
       };
 
       // Generate realistic building image based on location and type
-      const generateBuildingImage = (poi: MapboxPOI): string => {
+      const generateBuildingImage = (poi: any): string => {
         const category = getCategory(poi).toLowerCase();
-        const placeName = poi.place_name.toLowerCase();
+        const placeName = (poi.name || '').toLowerCase();
         
         // Use appropriate stock photos based on POI type
         if (category.includes('restaurant') || category.includes('food')) {
@@ -137,23 +145,23 @@ const usePOIData = (token: string) => {
 
       const category = getCategory(poi);
       
-      // Extract and translate the name and address
-      const rawName = poi.place_name.split(',')[0]; // Take first part before comma
+      // Extract and translate the name and address using Google Places data
+      const rawName = poi.name || 'Building';
       const translatedName = smartTranslate(rawName);
-      const translatedAddress = smartTranslate(poi.place_name);
+      const translatedAddress = smartTranslate(poi.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
       
       const poiDetails: POIDetails = {
-        id: poi.id,
+        id: poi.place_id || `google_${Date.now()}`,
         name: translatedName,
         address: translatedAddress,
         category,
-        coordinates: poi.geometry.coordinates,
+        coordinates: [lng, lat],
         originalName: rawName !== translatedName ? rawName : undefined,
-        description: `${category} located in ${poi.context?.find(c => c.id.includes('place'))?.text || 'Dubai'}`,
+        description: `${category} located in Dubai`,
         imageUrl: generateBuildingImage(poi),
-        rating: 4.0 + Math.random(), // Generate realistic rating between 4-5
-        phone: poi.properties?.tel,
-        website: poi.properties?.website,
+        rating: poi.rating || (4.0 + Math.random()), // Use Google rating or generate realistic rating between 4-5
+        phone: poi.formatted_phone_number,
+        website: poi.website,
         hours: 'Hours vary - Contact for details',
         priceLevel: category.includes('Restaurant') ? Math.floor(Math.random() * 3) + 1 : undefined,
         amenities: category === 'Building' ? ['Parking', 'Security', 'Elevator'] : 
