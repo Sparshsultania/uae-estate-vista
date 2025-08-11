@@ -634,26 +634,18 @@ useEffect(() => {
                     onSelect(updatedPropertyPoint);
                   } else {
                     // Fallback to geocoding for unnamed landmarks
-                    fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${centroid[0]},${centroid[1]}.json?access_token=${token}&types=poi,address`)
+                    // Use Google Places API instead of Mapbox geocoding
+                    fetch(`/api/places/nearby?lat=${centroid[1]}&lng=${centroid[0]}&radius=50`)
                       .then(response => response.json())
                       .then(data => {
                         let buildingName = `Building ${fid}`;
                         let community = "Dubai";
                         
-                        if (data.features && data.features.length > 0) {
-                          const feature = data.features[0];
-                          if (feature.place_type?.includes('poi')) {
-                            buildingName = feature.text || feature.place_name || buildingName;
-                          } else if (feature.place_type?.includes('address')) {
-                            buildingName = feature.place_name || buildingName;
-                          }
-                          
-                          if (feature.context) {
-                            const neighborhood = feature.context.find((c: any) => c.id.startsWith('neighborhood'));
-                            const locality = feature.context.find((c: any) => c.id.startsWith('locality'));
-                            const district = feature.context.find((c: any) => c.id.startsWith('district'));
-                            community = neighborhood?.text || locality?.text || district?.text || "Dubai";
-                          }
+                        if (data.buildings && data.buildings.length > 0) {
+                          const building = data.buildings[0]; // Get closest building
+                          buildingName = building.name || buildingName;
+                          community = building.address || "Dubai";
+                          console.log('Google Places found:', buildingName);
                         }
                         
                         const updatedPropertyPoint: PropertyPoint = {
@@ -664,10 +656,10 @@ useEffect(() => {
                         onSelect(updatedPropertyPoint);
                       })
                       .catch(error => {
-                        console.error('Failed to geocode building location:', error);
+                        console.error('Failed to get Google Places data:', error);
                         const fallbackPropertyPoint: PropertyPoint = {
                           ...tempPropertyPoint,
-                          name: `Building ${fid}`,
+                          name: closestFeature.properties?.name || `Building ${fid}`,
                         };
                         onSelect(fallbackPropertyPoint);
                       });
@@ -802,30 +794,18 @@ useEffect(() => {
                   onSelect(tempPropertyPoint);
                   
                   // Then fetch the real building name using reverse geocoding
-                  fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${centroid[0]},${centroid[1]}.json?access_token=${token}&types=poi,address`)
+                  // Use Google Places API instead of Mapbox geocoding
+                  fetch(`/api/places/nearby?lat=${centroid[1]}&lng=${centroid[0]}&radius=50`)
                     .then(response => response.json())
                     .then(data => {
                       let buildingName = `Building ${fid}`;
                       let community = "Dubai";
                       
-                      if (data.features && data.features.length > 0) {
-                        const feature = data.features[0];
-                        
-                        // Try to get a proper building/POI name
-                        if (feature.place_type?.includes('poi')) {
-                          buildingName = feature.text || feature.place_name || buildingName;
-                        } else if (feature.place_type?.includes('address')) {
-                          buildingName = feature.place_name || buildingName;
-                        }
-                        
-                        // Extract community/neighborhood from context
-                        if (feature.context) {
-                          const neighborhood = feature.context.find((c: any) => c.id.startsWith('neighborhood'));
-                          const locality = feature.context.find((c: any) => c.id.startsWith('locality'));
-                          const district = feature.context.find((c: any) => c.id.startsWith('district'));
-                          
-                          community = neighborhood?.text || locality?.text || district?.text || "Dubai";
-                        }
+                      if (data.buildings && data.buildings.length > 0) {
+                        const building = data.buildings[0]; // Get closest building
+                        buildingName = building.name || buildingName;
+                        community = building.address || "Dubai";
+                        console.log('Google Places found landmark:', buildingName);
                       }
                       
                       // Update with the real building name
@@ -838,7 +818,7 @@ useEffect(() => {
                       onSelect(updatedPropertyPoint);
                     })
                     .catch(error => {
-                      console.error('Failed to geocode building location:', error);
+                      console.error('Failed to get Google Places data:', error);
                       // Fallback to the temporary property point
                       const fallbackPropertyPoint: PropertyPoint = {
                         ...tempPropertyPoint,

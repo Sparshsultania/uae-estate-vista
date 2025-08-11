@@ -56,7 +56,8 @@ export function BuildingImageGallery({
     streetViewUrl: images.streetViewUrl,
     satelliteUrl: images.satelliteUrl,
     stockPhotos: images.stockPhotos?.length,
-    placesPhotos: images.placesPhotos?.length
+    placesPhotos: images.placesPhotos?.length,
+    allImagesLength: allImages.length
   });
 
   // Prioritize Google API images first
