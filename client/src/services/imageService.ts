@@ -18,10 +18,7 @@ export interface PropertyData {
 
 export interface BuildingImageData {
   streetViewUrl?: string;
-  satelliteUrl?: string;
-  placesPhotos?: string[];
-  stockPhotos?: string[];
-  fallbackImage?: string;
+  // Only authentic Google Street View images - no stock photos or fallbacks
 }
 
 export interface CommunityImageData {

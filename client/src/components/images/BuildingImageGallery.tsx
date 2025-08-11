@@ -52,14 +52,7 @@ export function BuildingImageGallery({
   // Collect all available images with metadata - prioritize Google APIs first
   const allImages: Array<{ url: string; type: string; icon: React.ReactNode; label: string }> = [];
   
-  console.log('BuildingImageGallery images received:', {
-    streetViewUrl: images.streetViewUrl,
-    stockPhotos: images.stockPhotos?.length,
-    placesPhotos: images.placesPhotos?.length
-  });
-
-  console.log('Raw images object:', images);
-  console.log('Total images being added to gallery:', allImages.length);
+  // Only process Street View images - no stock photos
 
   // Prioritize Google API images first
   if (images.streetViewUrl) {

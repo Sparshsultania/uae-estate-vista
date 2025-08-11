@@ -92,56 +92,9 @@ const usePOIData = (token: string) => {
       };
 
       // Generate realistic building image based on location and type
-      const generateBuildingImage = (poi: any): string => {
-        const category = getCategory(poi).toLowerCase();
-        const placeName = (poi.name || '').toLowerCase();
-        
-        // Use appropriate stock photos based on POI type
-        if (category.includes('restaurant') || category.includes('food')) {
-          return `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=200&fit=crop&q=80`;
-        } else if (category.includes('hotel')) {
-          return `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=200&fit=crop&q=80`;
-        } else if (category.includes('shopping') || category.includes('mall')) {
-          return `https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=200&fit=crop&q=80`;
-        } else if (category.includes('building') || placeName.includes('tower')) {
-          // Use Dubai/UAE specific building images
-          const buildingImages = [
-            'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=200&fit=crop&q=80', // Dubai skyline
-            'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=400&h=200&fit=crop&q=80', // Dubai marina
-            'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=200&fit=crop&q=80', // Dubai architecture
-          ];
-          return buildingImages[Math.floor(Math.random() * buildingImages.length)];
-        } else if (category.includes('healthcare') || category.includes('hospital')) {
-          return `https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&h=200&fit=crop&q=80`;
-        } else if (category.includes('park')) {
-          return `https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=200&fit=crop&q=80`;
-        }
-        
-        // Default Dubai/UAE building image
-        return `https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=200&fit=crop&q=80`;
-      };
+      // No images generated - only authentic Google Street View images will be used
 
-      // Generate sample reviews for demonstration
-      const generateSampleReviews = (category: string) => {
-        const reviewTemplates = {
-          'Restaurant': [
-            { text: "Great food and excellent service. Highly recommended!", rating: 5, author: "Ahmed K." },
-            { text: "Good location with authentic flavors. Will visit again.", rating: 4, author: "Sarah M." }
-          ],
-          'Hotel': [
-            { text: "Comfortable stay with great amenities and location.", rating: 5, author: "John D." },
-            { text: "Professional staff and clean rooms. Good value.", rating: 4, author: "Fatima A." }
-          ],
-          'Building': [
-            { text: "Impressive architecture and prime location.", rating: 5, author: "Mohamed R." },
-            { text: "Modern facilities and excellent accessibility.", rating: 4, author: "Lisa T." }
-          ]
-        };
-
-        return reviewTemplates[category as keyof typeof reviewTemplates] || [
-          { text: "Good location and service.", rating: 4, author: "Local Resident" }
-        ];
-      };
+      // No reviews generated - only authentic data will be used
 
       const category = getCategory(poi);
       
@@ -158,16 +111,9 @@ const usePOIData = (token: string) => {
         coordinates: [lng, lat],
         originalName: rawName !== translatedName ? rawName : undefined,
         description: `${category} located in Dubai`,
-        imageUrl: generateBuildingImage(poi),
-        rating: poi.rating || (4.0 + Math.random()), // Use Google rating or generate realistic rating between 4-5
+        // No imageUrl, rating, hours, amenities, or reviews - only authentic Google data
         phone: poi.formatted_phone_number,
         website: poi.website,
-        hours: 'Hours vary - Contact for details',
-        priceLevel: category.includes('Restaurant') ? Math.floor(Math.random() * 3) + 1 : undefined,
-        amenities: category === 'Building' ? ['Parking', 'Security', 'Elevator'] : 
-                  category === 'Restaurant' ? ['WiFi', 'Air Conditioning', 'Outdoor Seating'] : 
-                  ['WiFi', 'Air Conditioning'],
-        reviews: generateSampleReviews(category),
         // Generate property-specific data like JVC Skyline format
         value: category === 'Building' ? Math.floor(Math.random() * 2000000) + 800000 : undefined, // 800k - 2.8M AED
         pricePerSqFt: category === 'Building' ? Math.floor(Math.random() * 800) + 600 : undefined, // 600-1400 AED/sqft

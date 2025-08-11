@@ -129,12 +129,7 @@ const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, onClose, onGetDi
         
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{poi.category}</Badge>
-          {poi.rating && (
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm font-medium">{poi.rating.toFixed(1)}</span>
-            </div>
-          )}
+
           {renderPriceLevel(poi.priceLevel)}
         </div>
 
@@ -159,47 +154,12 @@ const POIDetailsPanel: React.FC<POIDetailsPanelProps> = ({ poi, onClose, onGetDi
             </div>
           )}
 
-          {poi.hours && (
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span>{poi.hours}</span>
-            </div>
-          )}
+
         </div>
 
-        {poi.amenities && poi.amenities.length > 0 && (
-          <div>
-            <h4 className="font-semibold mb-2">Amenities</h4>
-            <div className="flex flex-wrap gap-1">
-              {poi.amenities.map((amenity, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {amenity}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {poi.reviews && poi.reviews.length > 0 && (
-          <div>
-            <h4 className="font-semibold mb-2">Reviews</h4>
-            <div className="space-y-2">
-              {poi.reviews.slice(0, 2).map((review, index) => (
-                <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="flex items-center">
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current text-yellow-500' : 'text-gray-300'}`} />
-                      ))}
-                    </div>
-                    <span className="text-xs font-medium">{review.author}</span>
-                  </div>
-                  <p className="text-xs text-gray-700">{review.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+
+
 
         <Separator />
 
