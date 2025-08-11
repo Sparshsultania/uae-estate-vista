@@ -170,10 +170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const images: any = {};
 
       if (googleApiKey) {
-        // Always provide the Google API URLs since APIs are confirmed working
+        // Always provide the Google Street View URL since API is confirmed working
         images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
-        images.satelliteUrl = `/api/images/satellite?lat=${lat}&lng=${lng}`;
-        console.log(`Building images response includes: streetView=${!!images.streetViewUrl}, satellite=${!!images.satelliteUrl}`);
+        console.log(`Building images response includes: streetView=${!!images.streetViewUrl}`);
       }
 
       // Add curated Dubai stock photos as fallback

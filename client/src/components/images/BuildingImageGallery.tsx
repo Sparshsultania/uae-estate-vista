@@ -76,20 +76,7 @@ export function BuildingImageGallery({
     console.log('Added Street View image:', streetViewUrl);
   }
 
-  if (images.satelliteUrl) {
-    // Ensure full URL for Google API images
-    const satelliteUrl = images.satelliteUrl.startsWith('http') 
-      ? images.satelliteUrl 
-      : `${window.location.origin}${images.satelliteUrl}`;
-      
-    allImages.push({ 
-      url: satelliteUrl, 
-      type: 'satellite', 
-      icon: <Satellite className="h-3 w-3" />, 
-      label: 'Satellite' 
-    });
-    console.log('Added Satellite image:', satelliteUrl);
-  }
+  // Skip satellite images per user request
 
   if (images.placesPhotos?.length) {
     images.placesPhotos.forEach((url, index) => 
@@ -161,14 +148,12 @@ export function BuildingImageGallery({
                 const target = e.target as HTMLImageElement;
                 console.error(`Failed to load ${currentImage.type} image: ${currentImage.url}`);
                 
-                // If it's a Google API image that failed, try with full URL
-                if (currentImage.url.includes('/api/images/')) {
-                  console.log(`Google ${currentImage.type} API image failed, trying full URL`);
-                  const fullUrl = `${window.location.origin}${currentImage.url}`;
-                  console.log(`Retrying with: ${fullUrl}`);
-                  target.src = fullUrl;
-                  return; // Don't skip to next image yet, give full URL a chance
-                }
+                // Log detailed error for debugging
+                console.error(`Image load failed:`, {
+                  url: currentImage.url,
+                  type: currentImage.type,
+                  errorEvent: e
+                });
                 
                 // Fallback to next image if current fails to load
                 if (selectedImageIndex < allImages.length - 1) {
