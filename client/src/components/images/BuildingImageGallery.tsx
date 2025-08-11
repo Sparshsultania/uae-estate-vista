@@ -49,8 +49,36 @@ export function BuildingImageGallery({
     );
   }
 
-  // Collect all available images with metadata
+  // Collect all available images with metadata - prioritize Google APIs first
   const allImages: Array<{ url: string; type: string; icon: React.ReactNode; label: string }> = [];
+  
+  console.log('BuildingImageGallery images received:', {
+    streetViewUrl: images.streetViewUrl,
+    satelliteUrl: images.satelliteUrl,
+    stockPhotos: images.stockPhotos?.length,
+    placesPhotos: images.placesPhotos?.length
+  });
+
+  // Prioritize Google API images first
+  if (images.streetViewUrl) {
+    allImages.push({ 
+      url: images.streetViewUrl, 
+      type: 'streetview', 
+      icon: <Camera className="h-3 w-3" />, 
+      label: 'Street View' 
+    });
+    console.log('Added Street View image:', images.streetViewUrl);
+  }
+
+  if (images.satelliteUrl) {
+    allImages.push({ 
+      url: images.satelliteUrl, 
+      type: 'satellite', 
+      icon: <Satellite className="h-3 w-3" />, 
+      label: 'Satellite' 
+    });
+    console.log('Added Satellite image:', images.satelliteUrl);
+  }
 
   if (images.placesPhotos?.length) {
     images.placesPhotos.forEach((url, index) => 
@@ -63,24 +91,7 @@ export function BuildingImageGallery({
     );
   }
 
-  if (images.streetViewUrl) {
-    allImages.push({ 
-      url: images.streetViewUrl, 
-      type: 'streetview', 
-      icon: <Camera className="h-3 w-3" />, 
-      label: 'Street View' 
-    });
-  }
-
-  if (images.satelliteUrl) {
-    allImages.push({ 
-      url: images.satelliteUrl, 
-      type: 'satellite', 
-      icon: <Satellite className="h-3 w-3" />, 
-      label: 'Satellite' 
-    });
-  }
-
+  // Add stock photos as secondary options
   if (images.stockPhotos?.length) {
     images.stockPhotos.forEach((url, index) => 
       allImages.push({ 

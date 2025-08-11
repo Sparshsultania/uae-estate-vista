@@ -135,11 +135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Filter for buildings and relevant places
-      const buildings = data.results?.filter(place => 
-        place.types.some(type => 
+      const buildings = data.results?.filter((place: any) => 
+        place.types.some((type: string) => 
           ['building', 'establishment', 'premise', 'point_of_interest'].includes(type)
         )
-      ).map(place => ({
+      ).map((place: any) => ({
         name: place.name,
         address: place.vicinity,
         coordinates: [place.geometry.location.lng, place.geometry.location.lat],
