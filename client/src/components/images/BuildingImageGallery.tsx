@@ -79,16 +79,7 @@ export function BuildingImageGallery({
 
   // Skip satellite images per user request
 
-  if (images.placesPhotos?.length) {
-    images.placesPhotos.forEach((url, index) => 
-      allImages.push({ 
-        url, 
-        type: 'places', 
-        icon: <Building2 className="h-3 w-3" />, 
-        label: `Interior ${index + 1}` 
-      })
-    );
-  }
+  // Skip Google Places photos - only use Street View
 
   // No stock photos - only show images if Google Street View is available
 
@@ -137,7 +128,8 @@ export function BuildingImageGallery({
                 if (selectedImageIndex < allImages.length - 1) {
                   setSelectedImageIndex(prev => prev + 1);
                 } else {
-                  target.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640&h=480&fit=crop';
+                  // No fallback - image gallery will be hidden if no valid images
+                  console.log('No more images to show');
                 }
               }}
             />
