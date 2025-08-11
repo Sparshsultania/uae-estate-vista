@@ -7,6 +7,7 @@ import { X, MapPin, TrendingUp, BarChart3, Building2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { BuildingImageGallery } from '@/components/images/BuildingImageGallery';
 import { useBuildingImages } from '@/hooks/useBuildingImages';
+import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 
 export interface PropertyData {
   id: string;
@@ -62,11 +63,23 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
   const priceChange = ((currentPrice - previousPrice) / previousPrice * 100).toFixed(1);
   const isPositive = Number(priceChange) > 0;
 
+  const coordinates: [number, number] = [property.coordinates[0], property.coordinates[1]];
+  
+  // Get real building name from Google Places API
+  const { nearestBuilding, isLoading: placesLoading } = useGooglePlaces({
+    coordinates,
+    radius: 50
+  });
+  
+  // Use Google Places name if available, fallback to Mapbox name
+  const displayName = nearestBuilding?.name || property.name;
+  const displayAddress = nearestBuilding?.address || property.location;
+  
   // Fetch building images using the new image service
   const { images, isLoading: imagesLoading } = useBuildingImages({
-    coordinates: property.coordinates,
-    buildingName: property.name,
-    address: property.location,
+    coordinates,
+    buildingName: displayName,
+    address: displayAddress,
     enabled: true
   });
 
@@ -76,11 +89,16 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
       <div className="p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">{property.name}</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{displayName}</h2>
             <div className="flex items-center gap-1 text-sm text-gray-600">
               <MapPin className="w-4 h-4" />
-              <span>{property.location}</span>
+              <span>{displayAddress}</span>
             </div>
+            {nearestBuilding && (
+              <div className="text-xs text-green-600 mt-1">
+                ✓ Google Places verified
+              </div>
+            )}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="w-4 h-4" />
@@ -102,8 +120,8 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
         <BuildingImageGallery
           images={images}
           isLoading={imagesLoading}
-          buildingName={property.name}
-          address={property.location}
+          buildingName={displayName}
+          address={displayAddress}
         />
       </div>
 

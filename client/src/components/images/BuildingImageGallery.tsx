@@ -132,12 +132,16 @@ export function BuildingImageGallery({
               src={currentImage.url}
               alt={buildingName || 'Building'}
               className="w-full h-48 object-cover transition-transform duration-200 group-hover:scale-105"
+              onLoad={() => {
+                console.log(`Successfully loaded ${currentImage.type} image: ${currentImage.url}`);
+              }}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
+                console.error(`Failed to load ${currentImage.type} image: ${currentImage.url}`);
                 
                 // If it's a Google API image that failed, show a helpful message
                 if (currentImage.url.includes('/api/images/')) {
-                  console.log(`Google ${currentImage.type} API not available - showing fallback`);
+                  console.log(`Google ${currentImage.type} API image failed - trying next`);
                 }
                 
                 // Fallback to next image if current fails to load
