@@ -200,9 +200,8 @@ class ImageService {
         ? `${buildingName} Dubai building architecture`
         : `Dubai modern building architecture skyscraper`;
 
-      const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&client_id=YOUR_UNSPLASH_ACCESS_KEY`
-      );
+      // No external stock photo APIs - only authentic Google data
+      return [];
 
       if (!response.ok) {
         // No fallback photos

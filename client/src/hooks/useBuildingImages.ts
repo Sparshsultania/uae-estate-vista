@@ -51,7 +51,7 @@ export function useBuildingImages({
     hasImages: !!images && (
       !!images.streetViewUrl || 
       !!images.placesPhotos?.length || 
-      !!images.stockPhotos?.length
+      !!images.streetViewUrl
     )
   };
 }

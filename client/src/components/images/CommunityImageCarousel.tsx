@@ -87,7 +87,8 @@ export function CommunityImageCarousel({
               className="w-full h-32 object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=200&fit=crop';
+                // No fallback images - hide if image fails to load
+                target.style.display = 'none';
               }}
             />
             
