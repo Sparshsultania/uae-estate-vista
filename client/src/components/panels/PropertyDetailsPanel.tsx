@@ -90,28 +90,12 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
 
       {/* Building Images Gallery */}
       <div className="p-4 space-y-3">
-        {/* Show API setup notice if no Google images are available */}
-        {!imagesLoading && images && !images.streetViewUrl && !images.satelliteUrl && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <div className="text-amber-600 mt-0.5">
-                ⚠️
-              </div>
-              <div className="text-sm">
-                <p className="font-medium text-amber-800">Enable Google APIs for Real Photos</p>
-                <p className="text-amber-700 mt-1">
-                  To see actual Street View and satellite images, enable <strong>Street View Static API</strong> and <strong>Maps Static API</strong> in your{' '}
-                  <a 
-                    href="https://console.cloud.google.com/apis/library" 
-                    target="_blank" 
-                    className="underline hover:text-amber-900"
-                  >
-                    Google Cloud Console
-                  </a>.
-                </p>
-                <p className="text-amber-600 text-xs mt-1">Your API key is working - just need to enable these specific APIs!</p>
-              </div>
-            </div>
+        {/* Debug info for image URLs */}
+        {process.env.NODE_ENV === 'development' && images && (
+          <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+            <div>Street View: {images.streetViewUrl ? '✓' : '✗'}</div>
+            <div>Satellite: {images.satelliteUrl ? '✓' : '✗'}</div>
+            <div>Stock Photos: {images.stockPhotos?.length || 0}</div>
           </div>
         )}
         

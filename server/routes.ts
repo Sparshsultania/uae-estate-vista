@@ -109,6 +109,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Places nearby search for building names
+  app.get("/api/places/nearby", async (req, res) => {
+    try {
+      const { lat, lng, radius = 50 } = req.query;
+      const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+      if (!googleApiKey) {
+        return res.status(400).json({ error: 'Google Maps API key not configured' });
+      }
+
+      if (!lat || !lng) {
+        return res.status(400).json({ error: 'Latitude and longitude are required' });
+      }
+
+      const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
+        `location=${lat},${lng}&radius=${radius}&type=establishment&key=${googleApiKey}`;
+
+      const response = await fetch(placesUrl);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Places API error:', data);
+        return res.status(response.status).json({ error: 'Places search failed', details: data });
+      }
+
+      // Filter for buildings and relevant places
+      const buildings = data.results?.filter(place => 
+        place.types.some(type => 
+          ['building', 'establishment', 'premise', 'point_of_interest'].includes(type)
+        )
+      ).map(place => ({
+        name: place.name,
+        address: place.vicinity,
+        coordinates: [place.geometry.location.lng, place.geometry.location.lat],
+        types: place.types,
+        placeId: place.place_id,
+        rating: place.rating
+      })) || [];
+
+      res.json({ buildings });
+
+    } catch (error) {
+      console.error('Places nearby search error:', error);
+      res.status(500).json({ error: 'Failed to search nearby places' });
+    }
+  });
+
   // Comprehensive building images endpoint
   app.post("/api/images/building", async (req, res) => {
     try {
@@ -126,6 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Always provide the Google API URLs since APIs are confirmed working
         images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
         images.satelliteUrl = `/api/images/satellite?lat=${lat}&lng=${lng}`;
+        console.log(`Building images response includes: streetView=${!!images.streetViewUrl}, satellite=${!!images.satelliteUrl}`);
       }
 
       // Add curated Dubai stock photos as fallback
