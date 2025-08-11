@@ -204,5 +204,35 @@ All colors MUST be HSL.
   .amenity-pin.cat-gym_sports { background: linear-gradient(135deg, hsl(260 70% 50%), hsl(260 70% 65%)); }
   .amenity-pin.cat-shopping_mall { background: linear-gradient(135deg, hsl(280 70% 50%), hsl(280 70% 65%)); }
   .amenity-pin.cat-public_transport { background: linear-gradient(135deg, hsl(190 100% 45%), hsl(190 100% 60%)); }
+
+  /* Prevent horizontal overflow and ensure proper layout */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
+  /* Override container default for better responsive margins */
+  .container {
+    width: 100%;
+    max-width: 100%;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem !important;
+      padding-right: 1.5rem !important;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem !important;
+      padding-right: 2rem !important;
+    }
+  }
 }
 

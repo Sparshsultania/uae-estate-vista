@@ -251,7 +251,7 @@ const Index: React.FC = () => {
   return (
     <main className="min-h-screen">
       <header className="sticky top-0 z-20 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container py-4 flex flex-col gap-3">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3 max-w-full">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Property Valuation Analyser</h1>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-foreground">
@@ -339,7 +339,7 @@ const Index: React.FC = () => {
         </div>
       </header>
 
-      <section className="container py-6 space-y-6">
+      <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-full overflow-hidden">
         {/* Valuation Form - Full width above map */}
         <Card>
           <CardHeader className="pb-4">
@@ -351,7 +351,7 @@ const Index: React.FC = () => {
         </Card>
 
         {/* Map and Sidebar Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[85vh]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 min-h-[85vh] w-full max-w-full">
           <article className="lg:col-span-8 xl:col-span-9">
             <div className="relative rounded-lg border bg-muted/50 overflow-hidden h-[70vh] lg:h-[85vh]">
             <RealEstateMap
