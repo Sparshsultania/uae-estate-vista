@@ -133,8 +133,14 @@ export function BuildingImageGallery({
               alt={buildingName || 'Building'}
               className="w-full h-48 object-cover transition-transform duration-200 group-hover:scale-105"
               onError={(e) => {
-                // Fallback to next image if current fails to load
                 const target = e.target as HTMLImageElement;
+                
+                // If it's a Google API image that failed, show a helpful message
+                if (currentImage.url.includes('/api/images/')) {
+                  console.log(`Google ${currentImage.type} API not available - showing fallback`);
+                }
+                
+                // Fallback to next image if current fails to load
                 if (selectedImageIndex < allImages.length - 1) {
                   setSelectedImageIndex(prev => prev + 1);
                 } else {

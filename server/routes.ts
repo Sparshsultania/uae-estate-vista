@@ -21,11 +21,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?` +
         `size=640x640&location=${lat},${lng}&heading=${heading}&pitch=0&fov=90&key=${googleApiKey}`;
+      
+      console.log('Requesting Street View URL:', streetViewUrl.replace(googleApiKey, 'API_KEY_HIDDEN'));
 
       const response = await fetch(streetViewUrl);
       
+      console.log('Street View response status:', response.status);
+      
       if (!response.ok) {
-        return res.status(response.status).json({ error: 'Street View image not available' });
+        const errorText = await response.text();
+        console.error('Street View API error:', errorText);
+        
+        // Check if API is not enabled
+        if (response.status === 403 && errorText.includes('not authorized')) {
+          return res.status(403).json({ 
+            error: 'Street View Static API not enabled',
+            message: 'Please enable Street View Static API in Google Cloud Console',
+            details: errorText
+          });
+        }
+        
+        return res.status(response.status).json({ 
+          error: 'Street View image not available', 
+          details: errorText
+        });
       }
 
       res.set('Content-Type', 'image/jpeg');
@@ -60,7 +79,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(satelliteUrl);
       
       if (!response.ok) {
-        return res.status(response.status).json({ error: 'Satellite image not available' });
+        const errorText = await response.text();
+        console.error('Maps Static API error:', errorText);
+        
+        // Check if API is not enabled
+        if (response.status === 403 && errorText.includes('not authorized')) {
+          return res.status(403).json({ 
+            error: 'Maps Static API not enabled',
+            message: 'Please enable Maps Static API in Google Cloud Console',
+            details: errorText
+          });
+        }
+        
+        return res.status(response.status).json({ 
+          error: 'Satellite image not available', 
+          details: errorText
+        });
       }
 
       res.set('Content-Type', 'image/png');
@@ -89,8 +123,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const images: any = {};
 
       if (googleApiKey) {
-        images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
-        images.satelliteUrl = `/api/images/satellite?lat=${lat}&lng=${lng}`;
+        // Test if Street View API is available
+        try {
+          const testResponse = await fetch(`/api/images/streetview?lat=${lat}&lng=${lng}`);
+          if (testResponse.status !== 403) {
+            images.streetViewUrl = `/api/images/streetview?lat=${lat}&lng=${lng}`;
+          }
+        } catch (error) {
+          console.log('Street View API not available');
+        }
+
+        // Test if Maps Static API is available  
+        try {
+          const testResponse = await fetch(`/api/images/satellite?lat=${lat}&lng=${lng}`);
+          if (testResponse.status !== 403) {
+            images.satelliteUrl = `/api/images/satellite?lat=${lat}&lng=${lng}`;
+          }
+        } catch (error) {
+          console.log('Maps Static API not available');
+        }
       }
 
       // Add curated Dubai stock photos as fallback
