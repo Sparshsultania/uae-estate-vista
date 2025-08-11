@@ -16,6 +16,7 @@ import { useSearchBoxAmenities } from "@/hooks/useSearchBoxAmenities";
 import POIDetailsPanel, { type POIDetails } from "@/components/panels/POIDetailsPanel";
 import PropertyDetailsPanel, { type PropertyData } from "@/components/panels/PropertyDetailsPanel";
 import usePOIData from "@/hooks/usePOIData";
+import { ApiKeySettings } from "@/components/settings/ApiKeySettings";
 
 function circlePolygon(center: [number, number], radiusMeters: number, points = 64): GeoJSON.Feature<GeoJSON.Polygon> {
   const [lng, lat] = center;

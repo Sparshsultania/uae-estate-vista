@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { X, MapPin, TrendingUp, BarChart3, Building2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { BuildingImageGallery } from '@/components/images/BuildingImageGallery';
+import { useBuildingImages } from '@/hooks/useBuildingImages';
 
 export interface PropertyData {
   id: string;
@@ -60,6 +62,14 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
   const priceChange = ((currentPrice - previousPrice) / previousPrice * 100).toFixed(1);
   const isPositive = Number(priceChange) > 0;
 
+  // Fetch building images using the new image service
+  const { images, isLoading: imagesLoading } = useBuildingImages({
+    coordinates: property.coordinates,
+    buildingName: property.name,
+    address: property.location,
+    enabled: true
+  });
+
   return (
     <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 overflow-y-auto border-l border-gray-200">
       {/* Header */}
@@ -78,12 +88,15 @@ const PropertyDetailsPanel: React.FC<PropertyDetailsPanelProps> = ({ property, o
         </div>
       </div>
 
-      {/* Property Image */}
-      {property.imageUrl && (
-        <div className="h-48 overflow-hidden">
-          <img src={property.imageUrl} alt={property.name} className="w-full h-full object-cover" />
-        </div>
-      )}
+      {/* Building Images Gallery */}
+      <div className="p-4">
+        <BuildingImageGallery
+          images={images}
+          isLoading={imagesLoading}
+          buildingName={property.name}
+          address={property.location}
+        />
+      </div>
 
       <div className="p-4 space-y-6">
         {/* Key Metrics */}
