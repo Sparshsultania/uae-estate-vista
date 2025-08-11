@@ -62,23 +62,33 @@ export function BuildingImageGallery({
 
   // Prioritize Google API images first
   if (images.streetViewUrl) {
+    // Ensure full URL for Google API images
+    const streetViewUrl = images.streetViewUrl.startsWith('http') 
+      ? images.streetViewUrl 
+      : `${window.location.origin}${images.streetViewUrl}`;
+    
     allImages.push({ 
-      url: images.streetViewUrl, 
+      url: streetViewUrl, 
       type: 'streetview', 
       icon: <Camera className="h-3 w-3" />, 
       label: 'Street View' 
     });
-    console.log('Added Street View image:', images.streetViewUrl);
+    console.log('Added Street View image:', streetViewUrl);
   }
 
   if (images.satelliteUrl) {
+    // Ensure full URL for Google API images
+    const satelliteUrl = images.satelliteUrl.startsWith('http') 
+      ? images.satelliteUrl 
+      : `${window.location.origin}${images.satelliteUrl}`;
+      
     allImages.push({ 
-      url: images.satelliteUrl, 
+      url: satelliteUrl, 
       type: 'satellite', 
       icon: <Satellite className="h-3 w-3" />, 
       label: 'Satellite' 
     });
-    console.log('Added Satellite image:', images.satelliteUrl);
+    console.log('Added Satellite image:', satelliteUrl);
   }
 
   if (images.placesPhotos?.length) {
