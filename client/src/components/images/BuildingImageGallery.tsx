@@ -151,9 +151,13 @@ export function BuildingImageGallery({
                 const target = e.target as HTMLImageElement;
                 console.error(`Failed to load ${currentImage.type} image: ${currentImage.url}`);
                 
-                // If it's a Google API image that failed, show a helpful message
+                // If it's a Google API image that failed, try with full URL
                 if (currentImage.url.includes('/api/images/')) {
-                  console.log(`Google ${currentImage.type} API image failed - trying next`);
+                  console.log(`Google ${currentImage.type} API image failed, trying full URL`);
+                  const fullUrl = `${window.location.origin}${currentImage.url}`;
+                  console.log(`Retrying with: ${fullUrl}`);
+                  target.src = fullUrl;
+                  return; // Don't skip to next image yet, give full URL a chance
                 }
                 
                 // Fallback to next image if current fails to load

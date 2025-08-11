@@ -118,29 +118,26 @@ const Index: React.FC = () => {
     // Set property data immediately
     setSelectedPropertyDetails(propertyData);
     
-    // Optionally enhance with geocoding in background
-    const tk = token || localStorage.getItem('MAPBOX_PUBLIC_TOKEN') || '';
-    if (tk) {
-      const [lng, lat] = property.coords as [number, number];
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${tk}&types=address,poi`;
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          const feature = data.features?.[0];
-          if (feature) {
-            const buildingName = feature.text || feature.place_name || 'Selected Building';
-            setSelectedPropertyDetails(prev => prev ? {
-              ...prev,
-              name: buildingName,
-              address: feature.place_name || 'Dubai, UAE',
-              location: feature.place_name || 'Dubai, UAE'
-            } : prev);
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching building details:', error);
-        });
-    }
+    // Enhance with Google Places API in background
+    const [lng, lat] = property.coords as [number, number];
+    fetch(`/api/places/nearby?lat=${lat}&lng=${lng}&radius=50`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.buildings && data.buildings.length > 0) {
+          const building = data.buildings[0];
+          const buildingName = building.name || property.name || 'Selected Building';
+          console.log('Google Places found for property panel:', buildingName);
+          setSelectedPropertyDetails(prev => prev ? {
+            ...prev,
+            name: buildingName,
+            address: building.address || 'Dubai, UAE',
+            location: building.address || 'Dubai, UAE'
+          } : prev);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching Google Places building details:', error);
+      });
   };
 
   const handlePlaceSelect = (pl: { name: string; center: [number, number]; timestamp?: number }) => {
